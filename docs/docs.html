@@ -7,6 +7,9 @@
   <meta name="description" content="package reference for zarlcorp/core shared go libraries. documentation for zapp, zcache, zcrypto, zfilesystem, zoptions, zstyle, and zsync.">
   <link rel="stylesheet" href="https://zarlcorp.github.io/shared.css">
   <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.11.1/languages/go.min.js"></script>
+  <script>hljs.highlightAll();</script>
 </head>
 <body>
   <nav class="bar">
@@ -31,7 +34,7 @@
             <li><code>CloserFunc</code> — adapts a <code>func() error</code> into an <code>io.Closer</code></li>
             <li><code>ErrClosed</code> — returned by Track when the app has already been closed</li>
           </ul>
-<pre><code>app := zapp.New()
+<pre><code class="language-go">app := zapp.New()
 
 ctx, cancel := zapp.SignalContext(context.Background())
 defer cancel()
@@ -70,7 +73,7 @@ if err := app.Close(); err != nil {
             <li><code>WithMemoryTTL[K, V](ttl time.Duration)</code> — set expiry for memory cache entries</li>
             <li><code>ErrNotFound</code> — returned when a key does not exist</li>
           </ul>
-<pre><code>ctx := context.Background()
+<pre><code class="language-go">ctx := context.Background()
 c := zcache.NewMemoryCache[string, int]()
 c.Set(ctx, "key", 42)
 
@@ -105,7 +108,7 @@ existed, err := c.Delete(ctx, "key")</code></pre>
             <li><code>RandBytes(n int) ([]byte, error)</code> — cryptographic random bytes</li>
             <li><code>RandHex(n int) (string, error)</code> — hex-encoded random string</li>
           </ul>
-<pre><code>key, salt, err := zcrypto.DeriveKey([]byte("passphrase"), nil)
+<pre><code class="language-go">key, salt, err := zcrypto.DeriveKey([]byte("passphrase"), nil)
 if err != nil {
     // handle error
 }
@@ -142,7 +145,7 @@ defer zcrypto.Erase(key)</code></pre>
             <li><code>OpenFileFS</code> — file open with flags interface</li>
             <li><code>WalkDirFS</code> — directory tree walking interface</li>
           </ul>
-<pre><code>// in-memory filesystem for testing
+<pre><code class="language-go">// in-memory filesystem for testing
 memfs := zfilesystem.NewMemFS()
 memfs.WriteFile("test.txt", []byte("data"), 0644)
 
@@ -164,7 +167,7 @@ osfs.WriteFile("config.json", []byte("{}"), 0644)</code></pre>
           <ul>
             <li><code>Option[T any] func(*T)</code> — generic functional option type</li>
           </ul>
-<pre><code>type Config struct {
+<pre><code class="language-go">type Config struct {
     Name    string
     Timeout time.Duration
 }
@@ -202,7 +205,7 @@ cfg := NewConfig(
             <li><code>KeyQuit</code>, <code>KeyHelp</code>, <code>KeyUp</code>, <code>KeyDown</code>, <code>KeyEnter</code>, <code>KeyBack</code>, <code>KeyTab</code>, <code>KeyFilter</code> — standard keybindings</li>
             <li><code>CSSVariables</code> — full palette as CSS custom properties</li>
           </ul>
-<pre><code>import "github.com/zarlcorp/core/pkg/zstyle"
+<pre><code class="language-go">import "github.com/zarlcorp/core/pkg/zstyle"
 
 fmt.Println(zstyle.Title.Render("my tool"))
 fmt.Println(zstyle.StatusOK.Render("done"))
@@ -232,7 +235,7 @@ fmt.Println(zstyle.StyledLogo(
             <li><code>ZQueue.Close() error</code> — signal shutdown to waiting consumers</li>
             <li><code>ErrQueueClosed</code>, <code>ErrQueueEmpty</code>, <code>ErrCanceled</code> — sentinel errors</li>
           </ul>
-<pre><code>m := zsync.NewZMap[string, int]()
+<pre><code class="language-go">m := zsync.NewZMap[string, int]()
 m.Set("key", 42)
 value, ok := m.Get("key")
 

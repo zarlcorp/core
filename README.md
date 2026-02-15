@@ -60,8 +60,9 @@ func main() {
 
 ## Learn More
 
-- [MANIFESTO.md](./MANIFESTO.md) — Philosophy and architecture
-- [LICENSE](./LICENSE) — MIT License
+- [zarlcorp.github.io/core](https://zarlcorp.github.io/core) — package documentation
+- [MANIFESTO.md](./MANIFESTO.md) — philosophy and architecture
+- [LICENSE](./LICENSE) — MIT license
 
 ---
 
