@@ -1,6 +1,7 @@
 package zcache_test
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 
@@ -176,6 +177,98 @@ func TestFileCache_FileHandling(t *testing.T) {
 
 			tt.setup(c, tmpDir)
 			tt.check(t, c, tmpDir)
+		})
+	}
+}
+
+func TestFileCache_NoKeyCollision(t *testing.T) {
+	// keys that would have collided with the old char-replacement sanitization
+	tests := []struct {
+		name string
+		keyA string
+		keyB string
+	}{
+		{
+			name: "slash vs colon",
+			keyA: "a/b",
+			keyB: "a:b",
+		},
+		{
+			name: "backslash vs pipe",
+			keyA: "x\\y",
+			keyB: "x|y",
+		},
+		{
+			name: "star vs question mark",
+			keyA: "foo*bar",
+			keyB: "foo?bar",
+		},
+		{
+			name: "angle brackets",
+			keyA: "a<b",
+			keyB: "a>b",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := zcache.NewFileCache[string, string](
+				zcache.WithFileSystem[string, string](zfilesystem.NewMemFS()),
+			)
+			ctx := t.Context()
+
+			if err := c.Set(ctx, tt.keyA, "valueA"); err != nil {
+				t.Fatalf("Set(%q) error = %v", tt.keyA, err)
+			}
+			if err := c.Set(ctx, tt.keyB, "valueB"); err != nil {
+				t.Fatalf("Set(%q) error = %v", tt.keyB, err)
+			}
+
+			n, err := c.Len(ctx)
+			if err != nil {
+				t.Fatalf("Len() error = %v", err)
+			}
+			if n != 2 {
+				t.Errorf("Len() = %d, want 2 (keys collided)", n)
+			}
+
+			gotA, err := c.Get(ctx, tt.keyA)
+			if err != nil {
+				t.Fatalf("Get(%q) error = %v", tt.keyA, err)
+			}
+			if gotA != "valueA" {
+				t.Errorf("Get(%q) = %q, want %q", tt.keyA, gotA, "valueA")
+			}
+
+			gotB, err := c.Get(ctx, tt.keyB)
+			if err != nil {
+				t.Fatalf("Get(%q) error = %v", tt.keyB, err)
+			}
+			if gotB != "valueB" {
+				t.Errorf("Get(%q) = %q, want %q", tt.keyB, gotB, "valueB")
+			}
+
+			// delete one key, the other should remain
+			deleted, err := c.Delete(ctx, tt.keyA)
+			if err != nil {
+				t.Fatalf("Delete(%q) error = %v", tt.keyA, err)
+			}
+			if !deleted {
+				t.Errorf("Delete(%q) = false, want true", tt.keyA)
+			}
+
+			_, err = c.Get(ctx, tt.keyA)
+			if !errors.Is(err, zcache.ErrNotFound) {
+				t.Errorf("Get(%q) after delete error = %v, want ErrNotFound", tt.keyA, err)
+			}
+
+			gotB, err = c.Get(ctx, tt.keyB)
+			if err != nil {
+				t.Errorf("Get(%q) after deleting other key error = %v", tt.keyB, err)
+			}
+			if gotB != "valueB" {
+				t.Errorf("Get(%q) after deleting other key = %q, want %q", tt.keyB, gotB, "valueB")
+			}
 		})
 	}
 }

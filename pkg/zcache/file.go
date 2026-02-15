@@ -3,6 +3,7 @@ package zcache
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -116,7 +117,11 @@ func (c *FileCache[K, V]) Set(ctx context.Context, key K, value V) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	filename := c.makeFilename(key)
+	filename, err := c.makeFilename(key)
+	if err != nil {
+		return err
+	}
+
 	data, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -138,7 +143,12 @@ func (c *FileCache[K, V]) Get(ctx context.Context, key K) (V, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	filename := c.makeFilename(key)
+	filename, err := c.makeFilename(key)
+	if err != nil {
+		var zero V
+		return zero, err
+	}
+
 	data, err := c.fs.ReadFile(filename)
 	if err != nil {
 		var zero V
@@ -169,8 +179,12 @@ func (c *FileCache[K, V]) Delete(ctx context.Context, key K) (bool, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	filename := c.makeFilename(key)
-	err := c.fs.Remove(filename)
+	filename, err := c.makeFilename(key)
+	if err != nil {
+		return false, err
+	}
+
+	err = c.fs.Remove(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return false, nil
@@ -192,11 +206,6 @@ func (c *FileCache[K, V]) Clear(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if memfs, ok := c.fs.(*zfilesystem.MemFS); ok {
-		// use memfs optimized clear
-		memfs.ClearCacheFiles()
-		return nil
-	}
 	return c.fs.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -224,10 +233,6 @@ func (c *FileCache[K, V]) Len(ctx context.Context) (int, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if memfs, ok := c.fs.(*zfilesystem.MemFS); ok {
-		// use memfs optimized count
-		return memfs.CountCacheFiles(), nil
-	}
 	count := 0
 	err := c.fs.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -244,21 +249,12 @@ func (c *FileCache[K, V]) Len(ctx context.Context) (int, error) {
 	return count, err
 }
 
-func (c *FileCache[K, V]) makeFilename(key K) string {
-	keyBytes, _ := json.Marshal(key)
-
-	// sanitize for filesystem compatibility
-	filename := strings.ReplaceAll(string(keyBytes), "/", "_")
-	filename = strings.ReplaceAll(filename, "\\", "_")
-	filename = strings.ReplaceAll(filename, ":", "_")
-	filename = strings.ReplaceAll(filename, "*", "_")
-	filename = strings.ReplaceAll(filename, "?", "_")
-	filename = strings.ReplaceAll(filename, "\"", "_")
-	filename = strings.ReplaceAll(filename, "<", "_")
-	filename = strings.ReplaceAll(filename, ">", "_")
-	filename = strings.ReplaceAll(filename, "|", "_")
-
-	return filename + ".cache"
+func (c *FileCache[K, V]) makeFilename(key K) (string, error) {
+	keyBytes, err := json.Marshal(key)
+	if err != nil {
+		return "", fmt.Errorf("marshal cache key: %w", err)
+	}
+	return hex.EncodeToString(keyBytes) + ".cache", nil
 }
 
 // Healthy checks if the filesystem is accessible by testing read/write operations.
