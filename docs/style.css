@@ -29,3 +29,25 @@
 .docs-page .window + .window {
   margin-top: var(--gap);
 }
+
+/* --- highlight.js catppuccin mocha theme --- */
+.hljs {
+  background: var(--mantle);
+  color: var(--text);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+.hljs-keyword { color: var(--mauve); }
+.hljs-type { color: var(--yellow); }
+.hljs-built_in { color: var(--red); }
+.hljs-string { color: var(--green); }
+.hljs-number { color: var(--peach); }
+.hljs-comment { color: var(--overlay1); font-style: italic; }
+.hljs-function,
+.hljs-title { color: var(--blue); }
+.hljs-params { color: var(--text); }
+.hljs-literal { color: var(--peach); }
+.hljs-attr { color: var(--yellow); }
+.hljs-symbol { color: var(--flamingo); }
+.hljs-meta { color: var(--pink); }
+.hljs-punctuation { color: var(--overlay2); }
