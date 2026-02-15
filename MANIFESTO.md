@@ -193,14 +193,13 @@ Versioned per module — `pkg/zcache/v0.2.1` can release independently of `pkg/z
 
 #### Founding Packages — Build New
 
-**zapp** — application lifecycle and bootstrap
-- Extracted from the proven pattern in zarlai
-- `Starter`/`Stopper` interfaces for service lifecycle
-- Functional options for dependency injection
-- Signal handling with graceful shutdown (SIGINT/SIGTERM + timeout)
-- LIFO closer pattern for ordered cleanup
-- `errgroup`-based concurrent service management
-- Logging setup via slog (replaces standalone `zlog` package — logging config belongs in app bootstrap)
+**zapp** — application lifecycle toolkit
+- Embeddable `App` struct — toolkit, not framework. Consumer owns `main`, no callbacks.
+- `Track(io.Closer)` / `Close()` for LIFO resource cleanup — sequential, ordered teardown.
+- `SignalContext(context.Context)` returns a context cancelled on SIGINT/SIGTERM.
+- `CloserFunc` adapter — wraps `func() error` as `io.Closer`.
+- Functional options via `zoptions.Option[App]` for configuration (e.g. `WithName`).
+- No logging opinions — consumer configures slog, zapp stays out of it.
 
 **zstyle** — zarlcorp visual identity for TUIs
 - Color palette — the zarlcorp gradient and accent colors
@@ -454,6 +453,15 @@ zarlcorp doesn't exist to compete with Pi-hole, Bitwarden, or pass. It exists be
 
 **Proto as Contract — available, not mandated**
 When a tool needs structured communication (APIs, storage formats, inter-tool messaging), Protobuf definitions are the source of truth. But most founding tools are local-only and don't need it. Available in the coding standards when the time comes.
+
+**zapp is a toolkit, not a framework**
+Consumer owns `main`, owns `Run`, owns the control flow. zapp provides building blocks (`Track`, `Close`, `SignalContext`) that compose into whatever lifecycle the app needs. No `App.Run(func())` callback pattern, no hidden goroutines, no magic. The consumer wires things together explicitly.
+
+**Sequential LIFO close, not concurrent errgroup**
+Resource cleanup order matters — you close the HTTP server before the database, close the database before the logger. Concurrent cleanup via errgroup makes ordering unpredictable. Sequential LIFO (last tracked, first closed) gives deterministic teardown. Simpler to reason about, easier to debug.
+
+**No logging setup in zapp**
+Logging configuration is the consumer's responsibility. The old zlog package was absorbed conceptually — its reason for exclusion stands — but zapp doesn't replace it with its own slog setup. Consumer calls `slog.SetDefault()` in main. zapp stays out of it.
 
 ---
 
