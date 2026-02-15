@@ -2,6 +2,7 @@ package zfilesystem
 
 import (
 	"bytes"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -32,9 +33,26 @@ func NewMemFS() *MemFS {
 	}
 }
 
+// cleanPath validates and cleans a path for MemFS. It rejects absolute paths
+// and any path that resolves outside the logical root via .. traversal.
+func cleanPath(path string) (string, error) {
+	if filepath.IsAbs(path) {
+		return "", fmt.Errorf("path escapes base directory: %s", path)
+	}
+	cleaned := filepath.Clean(path)
+	if cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes base directory: %s", path)
+	}
+	return cleaned, nil
+}
+
 // ReadFile reads the file from memory.
 func (mfs *MemFS) ReadFile(filename string) ([]byte, error) {
-	file, err := mfs.files.Get(filename)
+	p, err := cleanPath(filename)
+	if err != nil {
+		return nil, err
+	}
+	file, err := mfs.files.Get(p)
 	if err != nil {
 		return nil, os.ErrNotExist
 	}
@@ -44,7 +62,11 @@ func (mfs *MemFS) ReadFile(filename string) ([]byte, error) {
 
 // WriteFile writes data to memory.
 func (mfs *MemFS) WriteFile(filename string, data []byte, perm fs.FileMode) error {
-	mfs.files.Set(filename, &memFile{
+	p, err := cleanPath(filename)
+	if err != nil {
+		return err
+	}
+	mfs.files.Set(p, &memFile{
 		data:    bytes.Clone(data),
 		modTime: time.Now(),
 		mode:    perm,
@@ -55,7 +77,11 @@ func (mfs *MemFS) WriteFile(filename string, data []byte, perm fs.FileMode) erro
 
 // Remove removes a file from memory.
 func (mfs *MemFS) Remove(filename string) error {
-	if !mfs.files.Delete(filename) {
+	p, err := cleanPath(filename)
+	if err != nil {
+		return err
+	}
+	if !mfs.files.Delete(p) {
 		return os.ErrNotExist
 	}
 	return nil
@@ -63,16 +89,22 @@ func (mfs *MemFS) Remove(filename string) error {
 
 // MkdirAll is a no-op for in-memory filesystem as directories are implicit.
 func (mfs *MemFS) MkdirAll(path string, perm fs.FileMode) error {
-	return nil
+	_, err := cleanPath(path)
+	return err
 }
 
 // OpenFile opens a file in memory with the given flags.
 func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (File, error) {
+	p, err := cleanPath(name)
+	if err != nil {
+		return nil, err
+	}
+
 	// For write operations, create a new file
 	if flag&(os.O_CREATE|os.O_WRONLY|os.O_RDWR) != 0 {
 		return &memFileHandle{
 			mfs:       mfs,
-			filename:  name,
+			filename:  p,
 			perm:      perm,
 			buffer:    &bytes.Buffer{},
 			writeMode: true,
@@ -80,14 +112,14 @@ func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (File, error
 	}
 
 	// For read operations, check if file exists
-	file, err := mfs.files.Get(name)
+	file, err := mfs.files.Get(p)
 	if err != nil {
 		return nil, os.ErrNotExist
 	}
 
 	return &memFileHandle{
 		mfs:       mfs,
-		filename:  name,
+		filename:  p,
 		buffer:    bytes.NewBuffer(bytes.Clone(file.data)),
 		writeMode: false,
 	}, nil
@@ -95,6 +127,11 @@ func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (File, error
 
 // WalkDir walks through all files in memory.
 func (mfs *MemFS) WalkDir(root string, fn fs.WalkDirFunc) error {
+	_, err := cleanPath(root)
+	if err != nil {
+		return err
+	}
+
 	keys := mfs.files.Keys()
 
 	for _, filename := range keys {

@@ -313,4 +313,106 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 			t.Errorf("WalkDir() visited %d files before stopping, want 2", count)
 		}
 	})
+
+	t.Run("path traversal protection", func(t *testing.T) {
+		rejected := []struct {
+			name string
+			path string
+		}{
+			{name: "parent escape", path: "../escape"},
+			{name: "nested parent escape", path: "foo/../../escape"},
+			{name: "absolute path", path: "/etc/passwd"},
+		}
+
+		for _, tt := range rejected {
+			t.Run(tt.name+" ReadFile", func(t *testing.T) {
+				_, err := fs.ReadFile(tt.path)
+				if err == nil {
+					t.Errorf("ReadFile(%q) should be rejected", tt.path)
+				}
+				if err != nil && !strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("ReadFile(%q) error = %v, want path escapes error", tt.path, err)
+				}
+			})
+
+			t.Run(tt.name+" WriteFile", func(t *testing.T) {
+				err := fs.WriteFile(tt.path, []byte("bad"), 0o644)
+				if err == nil {
+					t.Errorf("WriteFile(%q) should be rejected", tt.path)
+				}
+				if err != nil && !strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("WriteFile(%q) error = %v, want path escapes error", tt.path, err)
+				}
+			})
+
+			t.Run(tt.name+" Remove", func(t *testing.T) {
+				err := fs.Remove(tt.path)
+				if err == nil {
+					t.Errorf("Remove(%q) should be rejected", tt.path)
+				}
+				if err != nil && !strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("Remove(%q) error = %v, want path escapes error", tt.path, err)
+				}
+			})
+
+			t.Run(tt.name+" MkdirAll", func(t *testing.T) {
+				err := fs.MkdirAll(tt.path, 0o755)
+				if err == nil {
+					t.Errorf("MkdirAll(%q) should be rejected", tt.path)
+				}
+				if err != nil && !strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("MkdirAll(%q) error = %v, want path escapes error", tt.path, err)
+				}
+			})
+
+			t.Run(tt.name+" OpenFile", func(t *testing.T) {
+				_, err := fs.OpenFile(tt.path, os.O_RDONLY, 0o644)
+				if err == nil {
+					t.Errorf("OpenFile(%q) should be rejected", tt.path)
+				}
+				if err != nil && !strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("OpenFile(%q) error = %v, want path escapes error", tt.path, err)
+				}
+			})
+
+			t.Run(tt.name+" WalkDir", func(t *testing.T) {
+				err := fs.WalkDir(tt.path, func(path string, d os.DirEntry, err error) error {
+					return err
+				})
+				if err == nil {
+					t.Errorf("WalkDir(%q) should be rejected", tt.path)
+				}
+				if err != nil && !strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("WalkDir(%q) error = %v, want path escapes error", tt.path, err)
+				}
+			})
+		}
+
+		// paths that resolve within base should be allowed
+		allowed := []struct {
+			name string
+			path string
+		}{
+			{name: "safe traversal", path: "foo/../bar"},
+			{name: "dot prefix", path: "./normal/path"},
+			{name: "simple path", path: "simple.txt"},
+		}
+
+		for _, tt := range allowed {
+			t.Run(tt.name+" WriteFile allowed", func(t *testing.T) {
+				err := fs.WriteFile(tt.path, []byte("ok"), 0o644)
+				if err != nil && strings.Contains(err.Error(), "path escapes base directory") {
+					t.Errorf("WriteFile(%q) should be allowed: %v", tt.path, err)
+				}
+			})
+		}
+
+		// empty string should be treated as current dir (not rejected)
+		t.Run("empty path MkdirAll", func(t *testing.T) {
+			err := fs.MkdirAll("", 0o755)
+			if err != nil && strings.Contains(err.Error(), "path escapes base directory") {
+				t.Errorf("MkdirAll(\"\") should not escape: %v", err)
+			}
+		})
+	})
 }
