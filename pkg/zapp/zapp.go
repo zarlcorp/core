@@ -7,7 +7,7 @@
 // # Usage
 //
 //	func main() {
-//		app := zapp.New(zapp.WithName("myservice"))
+//		app := zapp.New()
 //
 //		ctx, cancel := zapp.SignalContext(context.Background())
 //		defer cancel()
@@ -33,14 +33,15 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
 	"os/signal"
-	"path/filepath"
 	"sync"
 	"syscall"
 
 	"github.com/zarlcorp/core/pkg/zoptions"
 )
+
+// ErrClosed is returned by Track when the app has already been closed.
+var ErrClosed = errors.New("app closed")
 
 // Option configures an App.
 type Option = zoptions.Option[App]
@@ -49,28 +50,32 @@ type Option = zoptions.Option[App]
 type App struct {
 	mu      sync.Mutex
 	once    sync.Once
-	name    string
+	closed  bool
 	closers []io.Closer
 	err     error
 }
 
-// New creates an App with the binary basename as the default name.
-// Use WithName to override.
+// New creates an App with the given options.
 func New(opts ...Option) *App {
-	a := &App{
-		name: filepath.Base(os.Args[0]),
-	}
+	a := &App{}
 	for _, opt := range opts {
 		opt(a)
 	}
 	return a
 }
 
-// Track registers a closer for cleanup. Safe for concurrent use.
-func (a *App) Track(c io.Closer) {
+// Track registers a closer for cleanup. Returns ErrClosed if the app
+// has already been closed. Safe for concurrent use.
+func (a *App) Track(c io.Closer) error {
 	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if a.closed {
+		return ErrClosed
+	}
+
 	a.closers = append(a.closers, c)
-	a.mu.Unlock()
+	return nil
 }
 
 // Close tears down all tracked resources in LIFO order. Returns a joined
@@ -79,6 +84,7 @@ func (a *App) Track(c io.Closer) {
 func (a *App) Close() error {
 	a.once.Do(func() {
 		a.mu.Lock()
+		a.closed = true
 		closers := a.closers
 		a.mu.Unlock()
 

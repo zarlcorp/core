@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"os"
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -13,53 +11,10 @@ import (
 )
 
 func TestNew(t *testing.T) {
-	tests := []struct {
-		name string
-		opts []zapp.Option
-		// we can't inspect unexported name, so we just verify it doesn't panic
-	}{
-		{
-			name: "defaults",
-			opts: nil,
-		},
-		{
-			name: "with name",
-			opts: []zapp.Option{zapp.WithName("testapp")},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			app := zapp.New(tt.opts...)
-			if app == nil {
-				t.Fatal("New returned nil")
-			}
-		})
-	}
-}
-
-func TestDefaultName(t *testing.T) {
-	// verify New doesn't panic when reading os.Args[0]
-	want := filepath.Base(os.Args[0])
-	if want == "" {
-		t.Fatal("os.Args[0] base is empty")
-	}
 	app := zapp.New()
 	if app == nil {
 		t.Fatal("New returned nil")
 	}
-}
-
-// closer records whether Close was called and in what order.
-type closer struct {
-	id    int
-	order *[]int
-	err   error
-}
-
-func (c *closer) Close() error {
-	*c.order = append(*c.order, c.id)
-	return c.err
 }
 
 func TestCloseLIFO(t *testing.T) {
@@ -177,6 +132,44 @@ func TestTrackConcurrent(t *testing.T) {
 	}
 }
 
+func TestTrackBeforeClose(t *testing.T) {
+	app := zapp.New()
+
+	err := app.Track(zapp.CloserFunc(func() error { return nil }))
+	if err != nil {
+		t.Fatalf("Track before Close: %v", err)
+	}
+}
+
+func TestTrackAfterClose(t *testing.T) {
+	app := zapp.New()
+	app.Close()
+
+	err := app.Track(zapp.CloserFunc(func() error { return nil }))
+	if !errors.Is(err, zapp.ErrClosed) {
+		t.Fatalf("Track after Close: got %v, want %v", err, zapp.ErrClosed)
+	}
+}
+
+func TestTrackAfterCloseNotCalled(t *testing.T) {
+	// the closer registered after Close must not be called on a subsequent Close
+	app := zapp.New()
+	app.Close()
+
+	var called bool
+	app.Track(zapp.CloserFunc(func() error {
+		called = true
+		return nil
+	}))
+
+	// second Close is a no-op due to sync.Once
+	app.Close()
+
+	if called {
+		t.Fatal("closer registered after Close should not be called")
+	}
+}
+
 func TestCloserFunc(t *testing.T) {
 	var called bool
 	var c io.Closer = zapp.CloserFunc(func() error {
@@ -230,4 +223,16 @@ func TestSignalContextInheritsParent(t *testing.T) {
 	default:
 		t.Fatal("context not canceled when parent canceled")
 	}
+}
+
+// closer records whether Close was called and in what order.
+type closer struct {
+	id    int
+	order *[]int
+	err   error
+}
+
+func (c *closer) Close() error {
+	*c.order = append(*c.order, c.id)
+	return c.err
 }

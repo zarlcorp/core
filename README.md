@@ -39,7 +39,7 @@ import (
 )
 
 func main() {
-    app := zapp.New(zapp.WithName("example"))
+    app := zapp.New()
     ctx, cancel := zapp.SignalContext(context.Background())
     defer cancel()
 
