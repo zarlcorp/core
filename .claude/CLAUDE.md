@@ -152,6 +152,30 @@ commonOp()
 
 Every dependency has a cost — build time, supply chain risk, upgrade burden. Prefer the standard library. When a dependency is justified, pin it and understand what it does. The Charmbracelet ecosystem is the one major dependency family we embrace.
 
+## Agent Workflow
+
+### Worktrees for Parallel Agents
+Multiple agents work on this repo simultaneously. Every agent works in its own git worktree — never on the main working tree directly.
+
+```bash
+# create a worktree for a work item
+git worktree add .worktrees/<id>-<name> -b work/<id>-<name> main
+
+# agent works in .worktrees/<id>-<name>/
+# when done, manager commits, pushes, creates PR, then cleans up:
+git worktree remove .worktrees/<id>-<name>
+```
+
+**Rules:**
+- `.worktrees/` is gitignored — worktree directories never get committed
+- Each agent gets a branch named `work/<id>-<name>`
+- Agents write code and run tests ONLY — no git commands, no gh commands
+- The manager handles all git operations (commit, push, PR, merge)
+- If blocked, agents write `.manager-blocker.md` in their worktree root
+
+### Specs
+Work items are defined in `.manager/specs/<id>-<name>.md`. Specs are the single source of truth for what an agent should build. See existing specs for format.
+
 ## Anti-Patterns
 
 Quick reference - applies across languages:
