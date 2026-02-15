@@ -90,12 +90,19 @@ func (o *OSFileSystem) OpenFile(name string, flag int, perm fs.FileMode) (File, 
 }
 
 // WalkDir walks the directory tree in the OS filesystem.
+// Paths passed to the callback are relative to the filesystem's base directory.
 func (o *OSFileSystem) WalkDir(root string, fn fs.WalkDirFunc) error {
 	p, err := o.resolvePath(root)
 	if err != nil {
 		return err
 	}
-	return filepath.WalkDir(p, fn)
+	return filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
+		rel, relErr := filepath.Rel(o.baseDir, path)
+		if relErr != nil {
+			return relErr
+		}
+		return fn(rel, d, err)
+	})
 }
 
 // BaseDir returns the base directory for this filesystem.
