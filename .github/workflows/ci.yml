@@ -1,0 +1,161 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      modules: ${{ steps.set-matrix.outputs.modules }}
+      has_changes: ${{ steps.set-matrix.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            global:
+              - 'go.work'
+              - '.github/**'
+            zapp:
+              - 'pkg/zapp/**'
+            zcache:
+              - 'pkg/zcache/**'
+            zcrypto:
+              - 'pkg/zcrypto/**'
+            zfilesystem:
+              - 'pkg/zfilesystem/**'
+            zoptions:
+              - 'pkg/zoptions/**'
+            zstyle:
+              - 'pkg/zstyle/**'
+            zsync:
+              - 'pkg/zsync/**'
+
+      - name: build module matrix
+        id: set-matrix
+        run: |
+          ALL_MODULES='["pkg/zapp","pkg/zcache","pkg/zcrypto","pkg/zfilesystem","pkg/zoptions","pkg/zstyle","pkg/zsync"]'
+
+          # global changes (go.work, CI config) trigger all modules
+          if [[ "${{ steps.filter.outputs.global }}" == "true" ]]; then
+            echo "modules=$ALL_MODULES" >> "$GITHUB_OUTPUT"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # build list from per-module filter outputs
+          MODULES=$(jq -nc \
+            --argjson zapp "${{ steps.filter.outputs.zapp }}" \
+            --argjson zcache "${{ steps.filter.outputs.zcache }}" \
+            --argjson zcrypto "${{ steps.filter.outputs.zcrypto }}" \
+            --argjson zfilesystem "${{ steps.filter.outputs.zfilesystem }}" \
+            --argjson zoptions "${{ steps.filter.outputs.zoptions }}" \
+            --argjson zstyle "${{ steps.filter.outputs.zstyle }}" \
+            --argjson zsync "${{ steps.filter.outputs.zsync }}" \
+            '[
+              if $zapp then "pkg/zapp" else empty end,
+              if $zcache then "pkg/zcache" else empty end,
+              if $zcrypto then "pkg/zcrypto" else empty end,
+              if $zfilesystem then "pkg/zfilesystem" else empty end,
+              if $zoptions then "pkg/zoptions" else empty end,
+              if $zstyle then "pkg/zstyle" else empty end,
+              if $zsync then "pkg/zsync" else empty end
+            ]')
+
+          if [[ "$MODULES" == "[]" ]]; then
+            echo "modules=[]" >> "$GITHUB_OUTPUT"
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "modules=$MODULES" >> "$GITHUB_OUTPUT"
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect-changes.outputs.modules) }}
+    name: test (${{ matrix.module }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: build
+        working-directory: ${{ matrix.module }}
+        run: go build ./...
+
+      - name: vet
+        working-directory: ${{ matrix.module }}
+        run: go vet ./...
+
+      - name: test
+        working-directory: ${{ matrix.module }}
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: check coverage
+        working-directory: ${{ matrix.module }}
+        run: |
+          if [ ! -f coverage.out ]; then
+            echo "No coverage file (no test files)"
+            exit 0
+          fi
+          TOTAL_LINE=$(go tool cover -func=coverage.out | grep '^total:')
+          if echo "$TOTAL_LINE" | grep -q '(no statements)'; then
+            echo "No executable statements in ${{ matrix.module }}, skipping coverage check"
+            exit 0
+          fi
+          COVERAGE=$(echo "$TOTAL_LINE" | awk '{print $NF}' | tr -d '%')
+          echo "Coverage for ${{ matrix.module }}: ${COVERAGE}%"
+          if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+            echo "::error::Coverage ${COVERAGE}% is below the 80% minimum"
+            exit 1
+          fi
+
+      - name: set module name
+        if: always()
+        id: modname
+        run: echo "name=$(basename ${{ matrix.module }})" >> "$GITHUB_OUTPUT"
+
+      - name: upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ steps.modname.outputs.name }}
+          path: ${{ matrix.module }}/coverage.out
+          if-no-files-found: ignore
+
+  lint:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: ${{ fromJSON(needs.detect-changes.outputs.modules) }}
+    name: lint (${{ matrix.module }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - uses: golangci/golangci-lint-action@v7
+        with:
+          version: v2.9
+          working-directory: ${{ matrix.module }}
