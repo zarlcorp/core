@@ -26,20 +26,24 @@ type RedisCache[K comparable, V any] struct {
 	ttl    time.Duration
 }
 
+// RedisOption configures a RedisCache.
 type RedisOption[K comparable, V any] = zoptions.Option[RedisCache[K, V]]
 
+// WithClient sets the Redis client for the cache.
 func WithClient[K comparable, V any](c redis.UniversalClient) RedisOption[K, V] {
 	return func(rc *RedisCache[K, V]) {
 		rc.client = c
 	}
 }
 
+// WithPrefix sets the key prefix for all cache entries.
 func WithPrefix[K comparable, V any](pre string) RedisOption[K, V] {
 	return func(rc *RedisCache[K, V]) {
 		rc.prefix = pre
 	}
 }
 
+// WithTTL sets the time-to-live for cache entries.
 func WithTTL[K comparable, V any](ttl time.Duration) RedisOption[K, V] {
 	return func(rc *RedisCache[K, V]) {
 		rc.ttl = ttl
@@ -188,9 +192,8 @@ func (c *RedisCache[K, V]) makeKey(key K) string {
 // Healthy checks if Redis is accessible by pinging it.
 func (c *RedisCache[K, V]) Healthy() error {
 	ctx := context.Background()
-	result := c.client.Ping(ctx)
-	if err := result.Err(); err != nil {
-		return fmt.Errorf("redis ping failed: %w", err)
+	if err := c.client.Ping(ctx).Err(); err != nil {
+		return fmt.Errorf("ping redis: %w", err)
 	}
 	return nil
 }

@@ -262,27 +262,22 @@ func (c *FileCache[K, V]) makeFilename(key K) string {
 
 // Healthy checks if the filesystem is accessible by testing read/write operations.
 func (c *FileCache[K, V]) Healthy() error {
-	// Test filesystem accessibility by trying to write and read a test file
 	testFile := ".health_check"
 	testData := []byte("health_check")
 
-	// Test write (0644 is standard file permissions)
 	if err := c.fs.WriteFile(testFile, testData, 0644); err != nil {
-		return fmt.Errorf("filesystem write failed: %w", err)
+		return fmt.Errorf("write health check: %w", err)
 	}
 
-	// Test read
 	data, err := c.fs.ReadFile(testFile)
 	if err != nil {
-		return fmt.Errorf("filesystem read failed: %w", err)
+		return fmt.Errorf("read health check: %w", err)
 	}
 
-	// Verify content
 	if string(data) != string(testData) {
-		return fmt.Errorf("filesystem data integrity check failed")
+		return fmt.Errorf("health check data mismatch")
 	}
 
-	// Clean up test file
 	c.fs.Remove(testFile)
 
 	return nil

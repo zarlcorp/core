@@ -1,10 +1,11 @@
-package zstyle
+package zstyle_test
 
 import (
 	"testing"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/zarlcorp/core/pkg/zstyle"
 )
 
 func TestColors(t *testing.T) {
@@ -12,15 +13,15 @@ func TestColors(t *testing.T) {
 		name  string
 		color lipgloss.Color
 	}{
-		{"Cyan", Cyan},
-		{"Orange", Orange},
-		{"Success", Success},
-		{"Error", Error},
-		{"Warning", Warning},
-		{"Info", Info},
-		{"Muted", Muted},
-		{"Subtle", Subtle},
-		{"Bright", Bright},
+		{"Cyan", zstyle.Cyan},
+		{"Orange", zstyle.Orange},
+		{"Success", zstyle.Success},
+		{"Error", zstyle.Error},
+		{"Warning", zstyle.Warning},
+		{"Info", zstyle.Info},
+		{"Muted", zstyle.Muted},
+		{"Subtle", zstyle.Subtle},
+		{"Bright", zstyle.Bright},
 	}
 
 	for _, c := range colors {
@@ -37,15 +38,15 @@ func TestStyles(t *testing.T) {
 		name  string
 		style lipgloss.Style
 	}{
-		{"Title", Title},
-		{"Subtitle", Subtitle},
-		{"Highlight", Highlight},
-		{"MutedText", MutedText},
-		{"StatusOK", StatusOK},
-		{"StatusErr", StatusErr},
-		{"StatusWarn", StatusWarn},
-		{"Border", Border},
-		{"ActiveBorder", ActiveBorder},
+		{"Title", zstyle.Title},
+		{"Subtitle", zstyle.Subtitle},
+		{"Highlight", zstyle.Highlight},
+		{"MutedText", zstyle.MutedText},
+		{"StatusOK", zstyle.StatusOK},
+		{"StatusErr", zstyle.StatusErr},
+		{"StatusWarn", zstyle.StatusWarn},
+		{"Border", zstyle.Border},
+		{"ActiveBorder", zstyle.ActiveBorder},
 	}
 
 	for _, s := range styles {
@@ -64,14 +65,14 @@ func TestKeys(t *testing.T) {
 		name    string
 		binding key.Binding
 	}{
-		{"KeyQuit", KeyQuit},
-		{"KeyHelp", KeyHelp},
-		{"KeyUp", KeyUp},
-		{"KeyDown", KeyDown},
-		{"KeyEnter", KeyEnter},
-		{"KeyBack", KeyBack},
-		{"KeyTab", KeyTab},
-		{"KeyFilter", KeyFilter},
+		{"KeyQuit", zstyle.KeyQuit},
+		{"KeyHelp", zstyle.KeyHelp},
+		{"KeyUp", zstyle.KeyUp},
+		{"KeyDown", zstyle.KeyDown},
+		{"KeyEnter", zstyle.KeyEnter},
+		{"KeyBack", zstyle.KeyBack},
+		{"KeyTab", zstyle.KeyTab},
+		{"KeyFilter", zstyle.KeyFilter},
 	}
 
 	for _, b := range bindings {

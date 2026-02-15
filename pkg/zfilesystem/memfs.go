@@ -63,12 +63,12 @@ func (mfs *MemFS) Remove(filename string) error {
 	return nil
 }
 
-// MkdirAll is a no-op for in-memory filesystem as directories are implicit
+// MkdirAll is a no-op for in-memory filesystem as directories are implicit.
 func (mfs *MemFS) MkdirAll(path string, perm fs.FileMode) error {
 	return nil
 }
 
-// OpenFile opens a file in memory with the given flags
+// OpenFile opens a file in memory with the given flags.
 func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (File, error) {
 	// For write operations, create a new file
 	if flag&(os.O_CREATE|os.O_WRONLY|os.O_RDWR) != 0 {

@@ -37,9 +37,8 @@ import (
 	"errors"
 )
 
-var (
-	ErrNotFound = errors.New("key not found")
-)
+// ErrNotFound is returned when a key does not exist in the cache.
+var ErrNotFound = errors.New("key not found")
 
 // Reader defines basic read operations for cache implementations.
 type Reader[K comparable, V any] interface {
