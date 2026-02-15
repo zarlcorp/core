@@ -1,6 +1,7 @@
 package zcache
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -48,9 +49,9 @@ type FileCache[K comparable, V any] struct {
 
 // WithFileSystem sets the filesystem implementation for the cache.
 // If not provided, an in-memory filesystem (MemFS) is used by default.
-func WithFileSystem[K comparable, V any](fs FileSystem) zoptions.Option[FileCache[K, V]] {
+func WithFileSystem[K comparable, V any](fsys FileSystem) zoptions.Option[FileCache[K, V]] {
 	return func(fc *FileCache[K, V]) {
-		fc.fs = fs
+		fc.fs = fsys
 	}
 }
 
@@ -68,7 +69,7 @@ func WithOSFileSystem[K comparable, V any](baseDir string) zoptions.Option[FileC
 			baseDir = tmpDir
 		}
 
-		if err := os.MkdirAll(baseDir, 0750); err != nil {
+		if err := os.MkdirAll(baseDir, 0o750); err != nil {
 			// fallback to memory when mkdir fails
 			fc.fs = zfilesystem.NewMemFS()
 			return
@@ -121,7 +122,7 @@ func (c *FileCache[K, V]) Set(ctx context.Context, key K, value V) error {
 		return err
 	}
 
-	return c.fs.WriteFile(filename, data, 0644)
+	return c.fs.WriteFile(filename, data, 0o644)
 }
 
 // Get retrieves the value associated with the given key from disk.
@@ -265,7 +266,7 @@ func (c *FileCache[K, V]) Healthy() error {
 	testFile := ".health_check"
 	testData := []byte("health_check")
 
-	if err := c.fs.WriteFile(testFile, testData, 0644); err != nil {
+	if err := c.fs.WriteFile(testFile, testData, 0o644); err != nil {
 		return fmt.Errorf("write health check: %w", err)
 	}
 
@@ -274,11 +275,11 @@ func (c *FileCache[K, V]) Healthy() error {
 		return fmt.Errorf("read health check: %w", err)
 	}
 
-	if string(data) != string(testData) {
+	if !bytes.Equal(data, testData) {
 		return fmt.Errorf("health check data mismatch")
 	}
 
-	c.fs.Remove(testFile)
+	_ = c.fs.Remove(testFile)
 
 	return nil
 }

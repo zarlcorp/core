@@ -67,8 +67,8 @@ func Ordered[T cmp.Ordered](s *ZSet[T]) []T {
 
 // Ordered returns a slice containing all values in the set sorted using the provided
 // comparison function. Use the package-level Ordered for cmp.Ordered types.
-func (s *ZSet[T]) Ordered(cmp func(a, b T) int) []T {
+func (s *ZSet[T]) Ordered(compare func(a, b T) int) []T {
 	values := s.m.Keys()
-	slices.SortFunc(values, cmp)
+	slices.SortFunc(values, compare)
 	return values
 }

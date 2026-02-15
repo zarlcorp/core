@@ -68,7 +68,7 @@ func TestRedisCache_Types(t *testing.T) {
 		{
 			name: "string to struct",
 			build: func() any {
-				type customValue struct{ data string }
+				type customValue struct{ Data string }
 				return zcache.NewRedisCache[string, customValue](zcache.WithPrefix[string, customValue]("string-struct"))
 			},
 		},
