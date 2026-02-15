@@ -1,6 +1,6 @@
 module github.com/zarlcorp/core/pkg/zcache
 
-go 1.24.4
+go 1.26.0
 
 require (
 	github.com/redis/go-redis/v9 v9.12.1
