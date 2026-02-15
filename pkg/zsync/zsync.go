@@ -18,11 +18,10 @@
 // # Error Handling
 //
 // All operations follow consistent error handling patterns:
-//   - ErrNotFound: Returned when attempting to access non-existent keys/values
 //   - ErrQueueClosed: Returned when attempting to operate on a closed queue
 //   - ErrQueueEmpty: Returned when attempting to pop from an empty queue
 //   - ErrCanceled: Returned when operations are canceled via context
-//   - Boolean returns: Indicate success/failure for operations like Delete/Remove
+//   - Boolean returns: Indicate success/failure for operations like Get, Delete, Remove
 //   - No panics: All error conditions are handled gracefully
 //
 // # Performance Characteristics
@@ -39,9 +38,9 @@
 //	m := zsync.NewZMap[string, int]()
 //	m.Set("key", 42)
 //
-//	value, err := m.Get("key")
-//	if err != nil {
-//	    // handle ErrNotFound
+//	value, ok := m.Get("key")
+//	if !ok {
+//	    // key not found
 //	}
 //
 //	existed := m.Delete("key")
@@ -81,7 +80,6 @@ import "errors"
 
 // Package-level errors used across multiple data structures
 var (
-	ErrNotFound    = errors.New("key not found")
 	ErrQueueClosed = errors.New("queue closed")
 	ErrQueueEmpty  = errors.New("queue empty")
 	ErrCanceled    = errors.New("operation canceled")

@@ -1,7 +1,6 @@
 package zsync_test
 
 import (
-	"errors"
 	"sync"
 	"testing"
 
@@ -36,9 +35,9 @@ func TestZMap_Set(t *testing.T) {
 			m := zsync.NewZMap[string, int]()
 			m.Set(tt.key, tt.value)
 
-			got, err := m.Get(tt.key)
-			if err != nil {
-				t.Errorf("Get() error = %v, want nil", err)
+			got, ok := m.Get(tt.key)
+			if !ok {
+				t.Errorf("Get() ok = false, want true")
 				return
 			}
 			if got != tt.value {
@@ -50,31 +49,32 @@ func TestZMap_Set(t *testing.T) {
 
 func TestZMap_Get(t *testing.T) {
 	tests := []struct {
-		name  string
-		setup map[string]int
-		key   string
-		want  int
-		error error
+		name   string
+		setup  map[string]int
+		key    string
+		want   int
+		wantOK bool
 	}{
 		{
-			name:  "get existing key",
-			setup: map[string]int{"test": 42},
-			key:   "test",
-			want:  42,
+			name:   "get existing key",
+			setup:  map[string]int{"test": 42},
+			key:    "test",
+			want:   42,
+			wantOK: true,
 		},
 		{
-			name:  "get non-existent key",
-			setup: map[string]int{},
-			key:   "missing",
-			want:  0,
-			error: zsync.ErrNotFound,
+			name:   "get non-existent key",
+			setup:  map[string]int{},
+			key:    "missing",
+			want:   0,
+			wantOK: false,
 		},
 		{
-			name:  "get from empty map",
-			setup: nil,
-			key:   "any",
-			want:  0,
-			error: zsync.ErrNotFound,
+			name:   "get from empty map",
+			setup:  nil,
+			key:    "any",
+			want:   0,
+			wantOK: false,
 		},
 	}
 
@@ -87,9 +87,9 @@ func TestZMap_Get(t *testing.T) {
 				m.Set(k, v)
 			}
 
-			got, err := m.Get(tt.key)
-			if !errors.Is(err, tt.error) {
-				t.Errorf("Get() error = %v, want %v", err, tt.error)
+			got, ok := m.Get(tt.key)
+			if ok != tt.wantOK {
+				t.Errorf("Get() ok = %v, want %v", ok, tt.wantOK)
 				return
 			}
 			if got != tt.want {
@@ -256,9 +256,9 @@ func TestZMap_Clear(t *testing.T) {
 		t.Errorf("Len() after clear = %v, want 0", m.Len())
 	}
 
-	_, err := m.Get("a")
-	if !errors.Is(err, zsync.ErrNotFound) {
-		t.Errorf("Get() after clear error = %v, want %v", err, zsync.ErrNotFound)
+	_, ok := m.Get("a")
+	if ok {
+		t.Errorf("Get() after clear ok = true, want false")
 	}
 }
 

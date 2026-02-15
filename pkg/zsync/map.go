@@ -27,17 +27,13 @@ func (m *ZMap[K, V]) Set(key K, value V) {
 }
 
 // Get retrieves the value associated with the given key.
-// Returns ErrNotFound if the key does not exist.
-func (m *ZMap[K, V]) Get(key K) (V, error) {
+// Returns the value and true if found, or the zero value and false if not.
+func (m *ZMap[K, V]) Get(key K) (V, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	value, exists := m.data[key]
-	if !exists {
-		var zero V
-		return zero, ErrNotFound
-	}
-	return value, nil
+	value, ok := m.data[key]
+	return value, ok
 }
 
 // Delete removes a key-value pair from the map.
