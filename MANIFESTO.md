@@ -140,20 +140,14 @@ zarlcorp/core/
 │   ├── specs/                      # work item specifications
 │   └── blockers/                   # sub-agent blocker reports
 │
-├── pkg/                            # shared Go packages
-│   ├── zapp/                       # app lifecycle and bootstrap
-│   ├── zstyle/                     # theming, colors, lipgloss presets
-│   ├── zcache/                     # thread-safe caching
-│   ├── zcrypto/                    # encryption primitives
-│   ├── zfilesystem/                # filesystem abstraction
-│   ├── zoptions/                   # functional options pattern
-│   └── zsync/                      # concurrent data structures
-│
-├── tools/                          # developer tools
-│   └── goenums/                    # enum code generator
-│
-└── templates/                      # project scaffolding
-    └── tool/                       # new privacy tool template
+└── pkg/                            # shared Go packages
+    ├── zapp/                       # app lifecycle toolkit
+    ├── zcache/                     # generic caching
+    ├── zcrypto/                    # encryption primitives
+    ├── zfilesystem/                # filesystem abstraction
+    ├── zoptions/                   # functional options pattern
+    ├── zstyle/                     # TUI visual identity
+    └── zsync/                      # concurrent data structures
 ```
 
 ### Package Design
