@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>core — package reference</title>
+  <meta name="description" content="package reference for zarlcorp/core shared go libraries. documentation for zapp, zcache, zcrypto, zfilesystem, zoptions, zstyle, and zsync.">
+  <link rel="stylesheet" href="https://zarlcorp.github.io/shared.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="bar">
+    <div class="container">
+      <a href="https://zarlcorp.github.io" class="nav-brand">zarlcorp</a>
+      <a href="index.html">core</a>
+      <a href="https://github.com/zarlcorp/core">github</a>
+    </div>
+  </nav>
+  <div class="container docs-page">
+    <div class="window">
+      <div class="window-title">zapp</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>application lifecycle toolkit. tracks resources and tears them down in LIFO order on close. handles signal-based context cancellation for graceful shutdown.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>New(opts ...Option) *App</code> — create an app with functional options</li>
+            <li><code>App.Track(c io.Closer) error</code> — register a resource for cleanup</li>
+            <li><code>App.Close() error</code> — tear down all tracked resources in LIFO order</li>
+            <li><code>SignalContext(parent context.Context) (context.Context, context.CancelFunc)</code> — context canceled on SIGINT/SIGTERM</li>
+            <li><code>CloserFunc</code> — adapts a <code>func() error</code> into an <code>io.Closer</code></li>
+            <li><code>ErrClosed</code> — returned by Track when the app has already been closed</li>
+          </ul>
+<pre><code>app := zapp.New()
+
+ctx, cancel := zapp.SignalContext(context.Background())
+defer cancel()
+
+db := openDB()
+app.Track(db)
+
+srv := startServer(ctx, db)
+app.Track(zapp.CloserFunc(func() error {
+    return srv.Shutdown(context.Background())
+}))
+
+&lt;-ctx.Done()
+
+if err := app.Close(); err != nil {
+    slog.Error("shutdown", "err", err)
+    os.Exit(1)
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="window-title">zcache</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>generic caching with pluggable backends. provides memory, file, and redis implementations behind a common interface. all operations are thread-safe and context-aware.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>Cache[K, V]</code> — complete cache interface (Get, Set, Delete, Clear, Len, Healthy)</li>
+            <li><code>Reader[K, V]</code> — read-only interface (Get, Len)</li>
+            <li><code>Writer[K, V]</code> — write-only interface (Set, Delete, Clear)</li>
+            <li><code>NewMemoryCache[K, V](opts ...MemoryOption) *MemoryCache</code> — in-memory cache with optional TTL</li>
+            <li><code>NewFileCache[K, V](opts ...Option) *FileCache</code> — file-backed persistent cache</li>
+            <li><code>NewRedisCache[K, V](opts ...RedisOption) *RedisCache</code> — redis-backed distributed cache</li>
+            <li><code>WithMemoryTTL[K, V](ttl time.Duration)</code> — set expiry for memory cache entries</li>
+            <li><code>ErrNotFound</code> — returned when a key does not exist</li>
+          </ul>
+<pre><code>ctx := context.Background()
+c := zcache.NewMemoryCache[string, int]()
+c.Set(ctx, "key", 42)
+
+value, err := c.Get(ctx, "key")
+if err != nil {
+    // handle ErrNotFound or context.Canceled
+}
+
+existed, err := c.Delete(ctx, "key")</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="window-title">zcrypto</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>encryption primitives for zarlcorp privacy tools. composes proven Go stdlib and x/crypto primitives — no custom cryptography. supports AES-256-GCM, argon2id key derivation, HKDF expansion, age-compatible encryption, and secure memory erasure.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>Encrypt(key, plaintext []byte) ([]byte, error)</code> — AES-256-GCM encryption with random nonce</li>
+            <li><code>Decrypt(key, ciphertext []byte) ([]byte, error)</code> — AES-256-GCM decryption</li>
+            <li><code>DeriveKey(password, salt []byte) (key, salt []byte, error)</code> — argon2id key derivation</li>
+            <li><code>ExpandKey(secret, salt, info []byte) ([]byte, error)</code> — HKDF-SHA256 key expansion</li>
+            <li><code>EncryptFile(key []byte, src io.Reader, dst io.Writer) error</code> — encrypt a stream</li>
+            <li><code>DecryptFile(key []byte, src io.Reader, dst io.Writer) error</code> — decrypt a stream</li>
+            <li><code>EncryptAge(password string, src io.Reader, dst io.Writer) error</code> — age password encryption</li>
+            <li><code>DecryptAge(password string, src io.Reader, dst io.Writer) error</code> — age password decryption</li>
+            <li><code>EncryptAgeKey(recipients []string, src, dst) error</code> — age X25519 key encryption</li>
+            <li><code>DecryptAgeKey(identity string, src, dst) error</code> — age X25519 key decryption</li>
+            <li><code>Erase(b []byte)</code> — zero out sensitive data in memory</li>
+            <li><code>RandBytes(n int) ([]byte, error)</code> — cryptographic random bytes</li>
+            <li><code>RandHex(n int) (string, error)</code> — hex-encoded random string</li>
+          </ul>
+<pre><code>key, salt, err := zcrypto.DeriveKey([]byte("passphrase"), nil)
+if err != nil {
+    // handle error
+}
+
+ciphertext, err := zcrypto.Encrypt(key, []byte("secret"))
+if err != nil {
+    // handle error
+}
+
+plaintext, err := zcrypto.Decrypt(key, ciphertext)
+if err != nil {
+    // handle error
+}
+
+defer zcrypto.Erase(key)</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="window-title">zfilesystem</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>filesystem abstraction with OS and in-memory implementations. enables dependency injection for testing while supporting production use cases with real file operations.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>ReadWriteFileFS</code> — complete filesystem interface (read, write, remove, mkdir, open, walkdir)</li>
+            <li><code>NewMemFS() *MemFS</code> — in-memory filesystem for testing, thread-safe</li>
+            <li><code>NewOSFileSystem(baseDir string) *OSFileSystem</code> — OS-backed filesystem rooted at a base directory</li>
+            <li><code>ReadFileFS</code> — read-only file interface</li>
+            <li><code>WriteFileFS</code> — write-only file interface</li>
+            <li><code>RemoveFS</code> — file removal interface</li>
+            <li><code>MkdirFS</code> — directory creation interface</li>
+            <li><code>OpenFileFS</code> — file open with flags interface</li>
+            <li><code>WalkDirFS</code> — directory tree walking interface</li>
+          </ul>
+<pre><code>// in-memory filesystem for testing
+memfs := zfilesystem.NewMemFS()
+memfs.WriteFile("test.txt", []byte("data"), 0644)
+
+data, err := memfs.ReadFile("test.txt")
+
+// OS filesystem for production
+osfs := zfilesystem.NewOSFileSystem("/path/to/data")
+osfs.WriteFile("config.json", []byte("{}"), 0644)</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="window-title">zoptions</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>generic functional options pattern. a single type used across all zarlcorp packages to configure structs consistently.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>Option[T any] func(*T)</code> — generic functional option type</li>
+          </ul>
+<pre><code>type Config struct {
+    Name    string
+    Timeout time.Duration
+}
+
+func WithName(name string) zoptions.Option[Config] {
+    return func(cfg *Config) {
+        cfg.Name = name
+    }
+}
+
+cfg := NewConfig(
+    WithName("production"),
+    WithTimeout(60 * time.Second),
+)</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="window-title">zstyle</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>catppuccin mocha palette, lipgloss style presets, and standard keybindings for TUI applications. every zarlcorp tool imports zstyle to share the same visual identity.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>Base</code>, <code>Mantle</code>, <code>Crust</code>, <code>Surface0..2</code>, <code>Overlay0..2</code>, <code>Text</code> — base colors</li>
+            <li><code>Rosewater</code>, <code>Flamingo</code>, <code>Pink</code>, <code>Mauve</code>, <code>Red</code>, <code>Peach</code>, <code>Yellow</code>, <code>Green</code>, <code>Teal</code>, <code>Sky</code>, <code>Blue</code>, <code>Lavender</code> — accent colors</li>
+            <li><code>Success</code>, <code>Error</code>, <code>Warning</code>, <code>Info</code> — semantic color aliases</li>
+            <li><code>ZburnAccent</code>, <code>ZvaultAccent</code>, <code>ZshieldAccent</code> — per-tool accent colors</li>
+            <li><code>Title</code>, <code>Subtitle</code>, <code>Highlight</code>, <code>MutedText</code> — text styles</li>
+            <li><code>StatusOK</code>, <code>StatusErr</code>, <code>StatusWarn</code> — status indicator styles</li>
+            <li><code>Border</code>, <code>ActiveBorder</code> — structural styles with rounded borders</li>
+            <li><code>Logo</code> — zarlcorp ASCII art wordmark</li>
+            <li><code>StyledLogo(s lipgloss.Style) string</code> — render logo with a given style</li>
+            <li><code>KeyQuit</code>, <code>KeyHelp</code>, <code>KeyUp</code>, <code>KeyDown</code>, <code>KeyEnter</code>, <code>KeyBack</code>, <code>KeyTab</code>, <code>KeyFilter</code> — standard keybindings</li>
+            <li><code>CSSVariables</code> — full palette as CSS custom properties</li>
+          </ul>
+<pre><code>import "github.com/zarlcorp/core/pkg/zstyle"
+
+fmt.Println(zstyle.Title.Render("my tool"))
+fmt.Println(zstyle.StatusOK.Render("done"))
+fmt.Println(zstyle.StyledLogo(
+    lipgloss.NewStyle().Foreground(zstyle.Lavender),
+))</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="window">
+      <div class="window-title">zsync</div>
+      <div class="window-content">
+        <div class="doc-content">
+          <p>thread-safe concurrent data structures. provides generic map, set, and blocking FIFO queue with read-write locking for optimal performance.</p>
+          <h3>key exports</h3>
+          <ul>
+            <li><code>NewZMap[K, V]() *ZMap</code> — thread-safe generic map (Set, Get, Delete, Keys, Len, Clear)</li>
+            <li><code>NewZSet[T]() *ZSet</code> — thread-safe generic set (Add, Contains, Remove, Values, Len, Clear)</li>
+            <li><code>Ordered[T cmp.Ordered](s *ZSet[T]) []T</code> — sorted set values for ordered types</li>
+            <li><code>ZSet.Ordered(compare func(a, b T) int) []T</code> — sorted set values with custom comparator</li>
+            <li><code>NewZQueue[T]() *ZQueue</code> — thread-safe blocking FIFO queue</li>
+            <li><code>ZQueue.Push(item T) error</code> — add item to back of queue</li>
+            <li><code>ZQueue.Pop() (T, error)</code> — blocking pop from front</li>
+            <li><code>ZQueue.PopContext(ctx context.Context) (T, error)</code> — blocking pop with context cancellation</li>
+            <li><code>ZQueue.TryPop() (T, error)</code> — non-blocking pop</li>
+            <li><code>ZQueue.Close() error</code> — signal shutdown to waiting consumers</li>
+            <li><code>ErrQueueClosed</code>, <code>ErrQueueEmpty</code>, <code>ErrCanceled</code> — sentinel errors</li>
+          </ul>
+<pre><code>m := zsync.NewZMap[string, int]()
+m.Set("key", 42)
+value, ok := m.Get("key")
+
+s := zsync.NewZSet[string]()
+s.Add("value")
+if s.Contains("value") {
+    s.Remove("value")
+}
+
+q := zsync.NewZQueue[string]()
+q.Push("item")
+item, err := q.Pop() // blocks until item available
+q.Close()            // wake waiting consumers</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer">
+      <p><a href="index.html">&larr; back to core</a></p>
+      <p>open source. MIT licensed.</p>
+    </footer>
+  </div>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>core — shared go packages.</title>
+  <meta name="description" content="shared go packages for zarlcorp privacy tools. application lifecycle, caching, encryption, filesystem abstraction, styling, and thread-safe data structures.">
+  <link rel="stylesheet" href="https://zarlcorp.github.io/shared.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <nav class="bar">
+    <div class="container">
+      <a href="https://zarlcorp.github.io" class="nav-brand">zarlcorp</a>
+      <a href="docs.html">documentation</a>
+      <a href="https://github.com/zarlcorp/core">github</a>
+    </div>
+  </nav>
+  <section class="landing">
+    <div class="container">
+      <header class="hero">
+        <div class="logo">core</div>
+        <div class="tagline">shared go packages for zarlcorp privacy tools.</div>
+      </header>
+      <section class="features">
+        <div class="window">
+          <div class="window-title">packages</div>
+          <div class="window-content">
+            <ul class="feature-list">
+              <li>zapp — application lifecycle, resource cleanup, signal handling</li>
+              <li>zcache — generic caching with pluggable backends</li>
+              <li>zcrypto — encryption primitives, key derivation, secure erase</li>
+              <li>zfilesystem — filesystem abstraction with OS and in-memory implementations</li>
+              <li>zoptions — generic functional options pattern</li>
+              <li>zstyle — catppuccin mocha palette, lipgloss presets, standard keybindings</li>
+              <li>zsync — thread-safe map, set, and blocking queue</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+      <section class="install">
+        <div class="install-cmd"><span class="prompt">$ </span>go get github.com/zarlcorp/core/pkg/zapp</div>
+        <div class="install-cmd"><span class="prompt">$ </span>go get github.com/zarlcorp/core/pkg/zstyle</div>
+        <div class="install-cmd"><span class="prompt">$ </span>go get github.com/zarlcorp/core/pkg/zcache</div>
+        <div class="install-cmd"><span class="prompt">$ </span>go get github.com/zarlcorp/core/pkg/zsync</div>
+      </section>
+      <div class="landing-links">
+        <a href="docs.html">docs</a>
+        <span class="sep">/</span>
+        <a href="https://zarlcorp.github.io">zarlcorp</a>
+        <span class="sep">/</span>
+        <a href="https://github.com/zarlcorp/core">github</a>
+      </div>
+      <footer class="footer">
+        <p>open source. MIT licensed.</p>
+        <p><a href="https://zarlcorp.github.io">zarlcorp.github.io</a></p>
+      </footer>
+    </div>
+  </section>
+</body>
+</html>

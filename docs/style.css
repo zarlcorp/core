@@ -1,0 +1,36 @@
+/* core — page-specific overrides */
+/* shared design system lives at zarlcorp.github.io/shared.css */
+
+/* tool accent: sky */
+:root { --accent: var(--sky); }
+
+/* features window */
+.landing .features {
+  padding: 0.75rem 0;
+}
+
+/* install commands spacing */
+.install .install-cmd + .install-cmd {
+  margin-top: 0.5rem;
+}
+
+/* links row */
+.landing-links {
+  text-align: center;
+  padding: 0.5rem 0;
+  font-size: 0.8rem;
+}
+.landing-links a { color: var(--overlay1); }
+.landing-links a:hover { color: var(--accent); }
+.landing-links .sep {
+  color: var(--surface2);
+  margin: 0 0.5rem;
+}
+
+/* --- docs page --- */
+.docs-page {
+  padding: 2rem 0 3rem;
+}
+.docs-page .window + .window {
+  margin-top: var(--gap);
+}
