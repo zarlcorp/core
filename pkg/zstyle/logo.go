@@ -3,11 +3,11 @@ package zstyle
 import "github.com/charmbracelet/lipgloss"
 
 // Logo is the zarlcorp ASCII art wordmark for TUI splash screens.
-// uses box-drawing characters for a clean, minimal look.
+// lowercase letterforms with box-drawing characters.
 const Logo = "" +
-	"┌─┐┌─┐┬─┐┬  ┌─┐┌─┐┬─┐┌─┐\n" +
-	"┌─┘├─┤├┬┘│  │  │ │├┬┘├─┘\n" +
-	"└─┘┴ ┴┴└─┴─┘└─┘└─┘┴└─┴  "
+	"──┐ ┌─┐ ┌─┐ │   ┌── ┌─┐ ┌─┐ ┌─┐\n" +
+	"┌─┘ ├─┤ ├─┘ │   │   │ │ ├─┘ ├─┘\n" +
+	"└── ┴ ┴ ┴   └── └── └─┘ ┴   │  "
 
 // StyledLogo returns the logo rendered with the given lipgloss style.
 func StyledLogo(s lipgloss.Style) string {

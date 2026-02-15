@@ -14,6 +14,13 @@ func TestLogo(t *testing.T) {
 		}
 	})
 
+	t.Run("three lines", func(t *testing.T) {
+		lines := strings.Split(zstyle.Logo, "\n")
+		if len(lines) != 3 {
+			t.Errorf("Logo has %d lines, want 3", len(lines))
+		}
+	})
+
 	t.Run("fits 80 columns", func(t *testing.T) {
 		for i, line := range strings.Split(zstyle.Logo, "\n") {
 			// count runes, not bytes — logo uses multibyte box-drawing chars
