@@ -52,9 +52,9 @@ func TestDefaultName(t *testing.T) {
 
 // closer records whether Close was called and in what order.
 type closer struct {
-	id     int
-	order  *[]int
-	err    error
+	id    int
+	order *[]int
+	err   error
 }
 
 func (c *closer) Close() error {
@@ -212,7 +212,7 @@ func TestSignalContextCancel(t *testing.T) {
 	case <-ctx.Done():
 		// expected
 	default:
-		t.Fatal("context not cancelled after cancel()")
+		t.Fatal("context not canceled after cancel()")
 	}
 }
 
@@ -221,13 +221,13 @@ func TestSignalContextInheritsParent(t *testing.T) {
 	ctx, cancel := zapp.SignalContext(parent)
 	defer cancel()
 
-	// cancelling parent should cancel the signal context
+	// canceling parent should cancel the signal context
 	parentCancel()
 
 	select {
 	case <-ctx.Done():
 		// expected
 	default:
-		t.Fatal("context not cancelled when parent cancelled")
+		t.Fatal("context not canceled when parent canceled")
 	}
 }
