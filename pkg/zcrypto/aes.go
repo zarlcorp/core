@@ -1,33 +1,3 @@
-// Package zcrypto provides encryption primitives for zarlcorp privacy tools.
-//
-// It composes proven Go stdlib and x/crypto primitives — no custom cryptography.
-// All error paths return errors; the package never panics.
-//
-// # Features
-//
-//   - AES-256-GCM symmetric encryption
-//   - Argon2id password-based key derivation
-//   - HKDF-SHA256 key expansion
-//   - Cryptographic random generation
-//   - Secure memory erasure
-//   - File encryption/decryption helpers
-//
-// # Usage
-//
-//	key, salt, err := zcrypto.DeriveKey([]byte("passphrase"), nil)
-//	if err != nil {
-//	    // handle error
-//	}
-//
-//	ciphertext, err := zcrypto.Encrypt(key, []byte("secret"))
-//	if err != nil {
-//	    // handle error
-//	}
-//
-//	plaintext, err := zcrypto.Decrypt(key, ciphertext)
-//	if err != nil {
-//	    // handle error
-//	}
 package zcrypto
 
 import (
