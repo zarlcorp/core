@@ -21,6 +21,7 @@ linters:
         - name: exported
           arguments:
             - disableStutteringCheck
+            - checkPrivateReceivers
     misspell:
       locale: US
   exclusions:

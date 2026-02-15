@@ -150,20 +150,38 @@ type memFileInfo struct {
 	modTime time.Time
 }
 
-func (fi *memFileInfo) Name() string       { return fi.name }
-func (fi *memFileInfo) Size() int64        { return fi.size }
-func (fi *memFileInfo) Mode() fs.FileMode  { return fi.mode }
+// Name returns the file name.
+func (fi *memFileInfo) Name() string { return fi.name }
+
+// Size returns the file size in bytes.
+func (fi *memFileInfo) Size() int64 { return fi.size }
+
+// Mode returns the file mode.
+func (fi *memFileInfo) Mode() fs.FileMode { return fi.mode }
+
+// ModTime returns the modification time.
 func (fi *memFileInfo) ModTime() time.Time { return fi.modTime }
-func (fi *memFileInfo) IsDir() bool        { return fi.mode.IsDir() }
-func (fi *memFileInfo) Sys() any           { return nil }
+
+// IsDir reports whether the entry is a directory.
+func (fi *memFileInfo) IsDir() bool { return fi.mode.IsDir() }
+
+// Sys returns nil.
+func (fi *memFileInfo) Sys() any { return nil }
 
 type memDirEntry struct {
 	info *memFileInfo
 }
 
-func (de *memDirEntry) Name() string               { return de.info.Name() }
-func (de *memDirEntry) IsDir() bool                { return de.info.IsDir() }
-func (de *memDirEntry) Type() fs.FileMode          { return de.info.Mode().Type() }
+// Name returns the entry name.
+func (de *memDirEntry) Name() string { return de.info.Name() }
+
+// IsDir reports whether the entry is a directory.
+func (de *memDirEntry) IsDir() bool { return de.info.IsDir() }
+
+// Type returns the file mode type bits.
+func (de *memDirEntry) Type() fs.FileMode { return de.info.Mode().Type() }
+
+// Info returns the file info.
 func (de *memDirEntry) Info() (fs.FileInfo, error) { return de.info, nil }
 
 // memFileHandle implements the File interface for in-memory files
@@ -176,6 +194,7 @@ type memFileHandle struct {
 	closed    bool
 }
 
+// Stat returns the file info.
 func (fh *memFileHandle) Stat() (fs.FileInfo, error) {
 	if fh.closed {
 		return nil, fs.ErrClosed
@@ -217,6 +236,7 @@ func (fh *memFileHandle) Write(p []byte) (int, error) {
 	return fh.buffer.Write(p)
 }
 
+// Close flushes writes and closes the handle.
 func (fh *memFileHandle) Close() error {
 	if fh.closed {
 		return fs.ErrClosed
