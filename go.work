@@ -1,0 +1,11 @@
+go 1.24.4
+
+use (
+	./pkg/zapp
+	./pkg/zcache
+	./pkg/zcrypto
+	./pkg/zfilesystem
+	./pkg/zoptions
+	./pkg/zstyle
+	./pkg/zsync
+)
