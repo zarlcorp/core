@@ -53,7 +53,7 @@ type MkdirFS interface {
 	MkdirAll(path string, perm fs.FileMode) error
 }
 
-// File is a file that can be read from and written to
+// File is a file that can be read from and written to.
 type File interface {
 	fs.File
 	io.Writer
