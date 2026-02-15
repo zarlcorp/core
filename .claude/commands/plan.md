@@ -38,7 +38,7 @@ Background, related specs, dependencies.
 - Acceptance criteria
 
 ## Target Repo
-zarldev/<repo-name>
+zarlcorp/<repo-name>
 
 ## Agent Role
 backend | frontend | proto | testing
@@ -51,10 +51,10 @@ backend | frontend | proto | testing
 Any additional context from the discussion.
 ```
 
-Note: The `Target Repo` field tells `/delegate` which repo to create/clone. Use `zarldev/<name>` for all projects.
+Note: The `Target Repo` field tells `/delegate` which repo to create/clone. Use `zarlcorp/<name>` for all projects.
 
 ### Step 3: Create GitHub issues
-Issues are created on the **target repo** using the zarldev PAT. If the repo doesn't exist yet, create the issue on `zarldev/claude-mngr` as a tracking issue.
+Issues are created on the **target repo** using the zarlcorp PAT. If the repo doesn't exist yet, create the issue on `zarlcorp/claude-mngr` as a tracking issue.
 
 For each item, run:
 ```bash
@@ -69,7 +69,7 @@ gh label create proto --repo <target-repo> --color D93F0B --description "Protobu
 gh label create testing --repo <target-repo> --color FBCA04 --description "Testing work"
 ```
 
-If the target repo doesn't exist yet, that's fine — `/delegate` will create it. Create the issue on `zarldev/claude-mngr` instead and note the target repo in the body.
+If the target repo doesn't exist yet, that's fine — `/delegate` will create it. Create the issue on `zarlcorp/claude-mngr` instead and note the target repo in the body.
 
 ### Step 4: Output summary table
 

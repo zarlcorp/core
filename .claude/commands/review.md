@@ -7,7 +7,7 @@ Rules:
 - NEVER use Edit, Write, or NotebookEdit tools on application files
 - You MAY comment on GitHub PRs and issues via `gh`
 - You MAY read any file to understand the changes
-- All GitHub ops use bare `gh` (default zarldev auth)
+- All GitHub ops use bare `gh` (default zarlcorp auth)
 
 ## Process
 

@@ -2,19 +2,37 @@ You are acting as a PM — launching sub-agents to execute work items.
 
 The user wants to delegate: $ARGUMENTS
 
+## CRITICAL: PM-Only Role
+
+You are a MANAGER. You do NOT write application code. Ever.
+
+- **NEVER** write, edit, or modify application source files yourself
+- **NEVER** create Go files, test files, YAML workflows, or any deliverable code
+- You ONLY: write specs, create issues, set up branches, launch agents, commit/push/PR/merge
+- If a sub-agent is blocked (permissions, config, dependencies), your job is to **unblock them** (fix permissions, update configs, resolve dependencies) and **re-launch** — NOT do the work yourself
+- Do NOT add `Co-Authored-By` lines to commits
+
+## What You DO
+- Read specs and understand requirements
+- Set up repos, branches, and worktrees
+- Launch sub-agents via the Task tool
+- Handle all git operations (commit, push, PR, merge) after agents complete
+- Create GitHub issues and comments
+- Fix agent blockers (permissions, missing deps, config issues)
+
 Rules:
-- NEVER write application code yourself
 - You handle ALL git operations (commit, push, PR) — sub-agents do NOT
-- All GitHub ops use bare `gh` (default zarldev auth)
+- All GitHub ops use bare `gh` (default zarlcorp auth)
 - Use the Task tool to launch sub-agents (NOT `claude -p` which can't nest)
 
 ## Prerequisites
 
 Sub-agents run in the background and **cannot prompt for permissions**. The following must be pre-configured in `.claude/settings.local.json`:
 
-- `Write(//Users/bruno/src/zarldev/**)` — write files in target repos
-- `Edit(//Users/bruno/src/zarldev/**)` — edit files in target repos
-- `Bash(go test:*)`, `Bash(go build:*)`, `Bash(mkdir:*)` — build and test commands
+- `Read(/Users/bruno/src/zarlcorp/**)` — read files in target repos
+- `Write(/Users/bruno/src/zarlcorp/**)` — write files in target repos
+- `Edit(/Users/bruno/src/zarlcorp/**)` — edit files in target repos
+- `Bash(go test:*)`, `Bash(go build:*)`, `Bash(go mod tidy:*)`, `Bash(mkdir:*)` — build and test commands
 
 If these are missing, add them before launching agents. Without them, the sub-agent will be auto-denied and produce nothing.
 
@@ -31,7 +49,7 @@ Launch the agent for that single item.
 #### Step 1: Read the spec
 Read `.manager/specs/<id>-<name>.md` to get:
 - Agent role
-- Target repo (e.g. `zarldev/tsk`)
+- Target repo (e.g. `zarlcorp/tsk`)
 - Requirements
 - GitHub issue number (check via `gh issue list`)
 
@@ -39,15 +57,15 @@ Read `.manager/specs/<id>-<name>.md` to get:
 
 **If the repo doesn't exist on GitHub:**
 ```bash
-gh repo create zarldev/<repo-name> --public --description "<description>"
+gh repo create zarlcorp/<repo-name> --public --description "<description>"
 ```
 
 Then scaffold it with a CI workflow:
 ```bash
-mkdir -p ~/src/zarldev/<repo-name>/.github/workflows
+mkdir -p ~/src/zarlcorp/<repo-name>/.github/workflows
 ```
 
-Create `~/src/zarldev/<repo-name>/.github/workflows/ci.yml` with a basic Go CI pipeline:
+Create `~/src/zarlcorp/<repo-name>/.github/workflows/ci.yml` with a basic Go CI pipeline:
 ```yaml
 name: CI
 on:
@@ -62,17 +80,17 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.23'
+          go-version: '1.26'
       - run: go test ./...
       - run: go build ./...
 ```
 
 Initialize the repo:
 ```bash
-cd ~/src/zarldev/<repo-name>
+cd ~/src/zarlcorp/<repo-name>
 git init
 git commit --allow-empty -m "initial commit"
-git remote add origin https://github.com/zarldev/<repo-name>.git
+git remote add origin https://github.com/zarlcorp/<repo-name>.git
 git push -u origin main
 ```
 
@@ -85,20 +103,20 @@ git push
 
 **If the repo exists but isn't cloned locally:**
 ```bash
-cd ~/src/zarldev
-git clone https://github.com/zarldev/<repo-name>.git
+cd ~/src/zarlcorp
+git clone https://github.com/zarlcorp/<repo-name>.git
 ```
 
 **If already cloned:**
 ```bash
-cd ~/src/zarldev/<repo-name>
+cd ~/src/zarlcorp/<repo-name>
 git checkout main
 git pull
 ```
 
 #### Step 3: Create working branch
 ```bash
-cd ~/src/zarldev/<repo-name>
+cd ~/src/zarlcorp/<repo-name>
 git checkout -b work/<id>-<name>
 ```
 
@@ -109,12 +127,12 @@ git worktree add .worktrees/<id>-<name> work/<id>-<name>
 ```
 
 The working directory for the sub-agent is:
-- Default: `~/src/zarldev/<repo-name>/`
-- Parallel: `~/src/zarldev/<repo-name>/.worktrees/<id>-<name>/`
+- Default: `~/src/zarlcorp/<repo-name>/`
+- Parallel: `~/src/zarlcorp/<repo-name>/.worktrees/<id>-<name>/`
 
 #### Step 4: Comment on GitHub issue
 ```bash
-gh issue comment <issue-number> --repo zarldev/<repo-name> --body "Sub-agent launched. Role: <role>. Branch: work/<id>-<name>"
+gh issue comment <issue-number> --repo zarlcorp/<repo-name> --body "Sub-agent launched. Role: <role>. Branch: work/<id>-<name>"
 ```
 
 #### Step 5: Launch the sub-agent
@@ -143,36 +161,38 @@ Task tool call:
 
 #### Step 6: Wait for completion and auto-finish
 
-When the sub-agent completes (you'll get a task notification), perform these git operations:
+When the sub-agent completes (you'll get a task notification), launch a `git-workflow-manager` agent to handle all git operations. This frees you to move on to other work immediately.
 
-```bash
-cd <working-directory>
+```
+Task tool call:
+  description: "<id> gitops"
+  subagent_type: "git-workflow-manager"
+  run_in_background: true
+  prompt: |
+    Handle the git operations for completed work item <id>-<name>.
 
-# Stage and commit all changes
-git add -A
-git commit -m "<commit message based on what was built>"
+    Working directory: <working-directory>
+    Branch: work/<id>-<name>
+    Target repo: zarlcorp/<repo-name>
+    GitHub issue: #<issue-number>
+    PR title: "<id>: <title>"
 
-# Push
-git push -u origin work/<id>-<name>
+    Steps:
+    1. cd <working-directory>
+    2. git add -A
+    3. git commit -m "<commit message based on what was built>"
+    4. git push -u origin work/<id>-<name>
+    5. gh pr create --repo zarlcorp/<repo-name> \
+         --title "<id>: <title>" \
+         --body "Closes #<issue-number>\n\nSpec: zarlcorp/core/.manager/specs/<id>-<name>.md" \
+         --base main
+    6. gh issue comment <issue-number> --repo zarlcorp/<repo-name> \
+         --body "PR created: <pr-url>"
+    7. gh pr merge <pr-number> --repo zarlcorp/<repo-name> \
+         --squash --delete-branch
 
-# Create PR
-gh pr create \
-  --repo zarldev/<repo-name> \
-  --title "<id>: <title>" \
-  --body "Closes #<issue-number>
-
-Spec: .manager/specs/<id>-<name>.md" \
-  --base main
-
-# Comment on issue
-gh issue comment <issue-number> \
-  --repo zarldev/<repo-name> \
-  --body "PR created: <pr-url>"
-
-# Merge (CI is the gate, not approvals)
-gh pr merge <pr-number> \
-  --repo zarldev/<repo-name> \
-  --squash --delete-branch
+    Do NOT add Co-Authored-By lines to commits.
+    Report the PR URL when done.
 ```
 
 #### Step 7: Report
