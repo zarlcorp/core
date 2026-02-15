@@ -3,9 +3,17 @@ package zcache_test
 import (
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/redis/go-redis/v9"
 	"github.com/zarlcorp/core/pkg/zcache"
 )
+
+// newTestRedisClient starts an in-memory redis and returns a client pointed at it.
+// the server is auto-closed on test cleanup.
+func newTestRedisClient(t *testing.T) *redis.Client {
+	s := miniredis.RunT(t)
+	return redis.NewClient(&redis.Options{Addr: s.Addr()})
+}
 
 func TestRedisCache_Constructor(t *testing.T) {
 	tests := []struct {
@@ -78,18 +86,17 @@ func TestRedisCache_Types(t *testing.T) {
 }
 
 func TestRedisCache_ClearPrefixIsolation(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping Redis tests in short mode")
-	}
-
 	ctx := t.Context()
+	client := newTestRedisClient(t)
 
 	// two caches with different prefixes sharing the same redis
 	cacheA := zcache.NewRedisCache[string, int](
 		zcache.WithPrefix[string, int]("isolation-a:"),
+		zcache.WithClient[string, int](client),
 	)
 	cacheB := zcache.NewRedisCache[string, int](
 		zcache.WithPrefix[string, int]("isolation-b:"),
+		zcache.WithClient[string, int](client),
 	)
 
 	// seed both caches

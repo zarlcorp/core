@@ -22,11 +22,11 @@ func TestCache_Contract(t *testing.T) {
 		{
 			name: "RedisCache",
 			newCache: func(t *testing.T) (zcache.Cache[string, int], func()) {
-				if testing.Short() {
-					t.Skip("skipping Redis tests in short mode")
-				}
-
-				c := zcache.NewRedisCache[string, int](zcache.WithPrefix[string, int]("pre"))
+				client := newTestRedisClient(t)
+				c := zcache.NewRedisCache[string, int](
+					zcache.WithPrefix[string, int]("pre"),
+					zcache.WithClient[string, int](client),
+				)
 
 				cleanup := func() {
 					c.Clear(t.Context())
