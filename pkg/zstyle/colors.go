@@ -62,9 +62,9 @@ var (
 
 // per-tool accent colors
 var (
-	ZburnAccent   = Peach    // warm — fire, burning
-	ZvaultAccent  = Mauve    // regal — vaults, secrets
-	ZshieldAccent = Teal     // protective — shields, safety
+	ZburnAccent   = Peach // warm — fire, burning
+	ZvaultAccent  = Mauve // regal — vaults, secrets
+	ZshieldAccent = Teal  // protective — shields, safety
 )
 
 // CSSVariables exports the full catppuccin mocha palette as CSS custom properties.

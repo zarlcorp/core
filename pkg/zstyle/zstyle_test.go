@@ -11,9 +11,9 @@ import (
 
 func TestBaseColors(t *testing.T) {
 	colors := []struct {
-		name string
+		name  string
 		color lipgloss.Color
-		hex  string
+		hex   string
 	}{
 		{"Base", zstyle.Base, "#1e1e2e"},
 		{"Mantle", zstyle.Mantle, "#181825"},
@@ -149,7 +149,7 @@ func TestCSSVariables(t *testing.T) {
 	}
 
 	for _, want := range required {
-		if !strings.Contains(zstyle.CSSVariables, want) {
+		if !strings.Contains(zstyle.CSSVariables, want) { //nolint:gocritic // args are correct: haystack, needle
 			t.Errorf("CSSVariables missing %q", want)
 		}
 	}
