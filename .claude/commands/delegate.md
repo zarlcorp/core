@@ -114,21 +114,20 @@ git checkout main
 git pull
 ```
 
-#### Step 3: Create working branch
+#### Step 3: Create worktree
+
+**ALL sub-agents MUST work in git worktrees — never on the main working tree directly.** This keeps the main working tree clean and avoids conflicts.
+
 ```bash
 cd ~/src/zarlcorp/<repo-name>
-git checkout -b work/<id>-<name>
-```
-
-If there are parallel agents on the same repo, use a worktree instead:
-```bash
+git checkout main
+git pull
 git branch work/<id>-<name>
 git worktree add .worktrees/<id>-<name> work/<id>-<name>
 ```
 
-The working directory for the sub-agent is:
-- Default: `~/src/zarlcorp/<repo-name>/`
-- Parallel: `~/src/zarlcorp/<repo-name>/.worktrees/<id>-<name>/`
+The working directory for the sub-agent is always:
+`~/src/zarlcorp/<repo-name>/.worktrees/<id>-<name>/`
 
 #### Step 4: Comment on GitHub issue
 ```bash
