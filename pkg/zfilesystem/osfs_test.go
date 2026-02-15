@@ -1,6 +1,7 @@
 package zfilesystem_test
 
 import (
+	"bytes"
 	"io/fs"
 	"path/filepath"
 	"sort"
@@ -93,7 +94,7 @@ func TestOSFileSystem_WalkDir_RelativePaths(t *testing.T) {
 				t.Errorf("unexpected file: %s", path)
 				return nil
 			}
-			if string(data) != string(expected) {
+			if !bytes.Equal(data, expected) {
 				t.Errorf("ReadFile(%q) = %q, want %q", path, data, expected)
 			}
 			return nil
@@ -148,4 +149,3 @@ func TestOSFileSystem_WalkDir_RelativePaths(t *testing.T) {
 		}
 	})
 }
-
