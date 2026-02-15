@@ -1,0 +1,93 @@
+package zstyle
+
+import (
+	"testing"
+
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/lipgloss"
+)
+
+func TestColors(t *testing.T) {
+	colors := []struct {
+		name  string
+		color lipgloss.Color
+	}{
+		{"Cyan", Cyan},
+		{"Orange", Orange},
+		{"Success", Success},
+		{"Error", Error},
+		{"Warning", Warning},
+		{"Info", Info},
+		{"Muted", Muted},
+		{"Subtle", Subtle},
+		{"Bright", Bright},
+	}
+
+	for _, c := range colors {
+		t.Run(c.name, func(t *testing.T) {
+			if c.color == "" {
+				t.Errorf("color %s is empty", c.name)
+			}
+		})
+	}
+}
+
+func TestStyles(t *testing.T) {
+	styles := []struct {
+		name  string
+		style lipgloss.Style
+	}{
+		{"Title", Title},
+		{"Subtitle", Subtitle},
+		{"Highlight", Highlight},
+		{"MutedText", MutedText},
+		{"StatusOK", StatusOK},
+		{"StatusErr", StatusErr},
+		{"StatusWarn", StatusWarn},
+		{"Border", Border},
+		{"ActiveBorder", ActiveBorder},
+	}
+
+	for _, s := range styles {
+		t.Run(s.name, func(t *testing.T) {
+			// verify rendering does not panic
+			got := s.style.Render("test")
+			if got == "" {
+				t.Errorf("style %s rendered empty string", s.name)
+			}
+		})
+	}
+}
+
+func TestKeys(t *testing.T) {
+	bindings := []struct {
+		name    string
+		binding key.Binding
+	}{
+		{"KeyQuit", KeyQuit},
+		{"KeyHelp", KeyHelp},
+		{"KeyUp", KeyUp},
+		{"KeyDown", KeyDown},
+		{"KeyEnter", KeyEnter},
+		{"KeyBack", KeyBack},
+		{"KeyTab", KeyTab},
+		{"KeyFilter", KeyFilter},
+	}
+
+	for _, b := range bindings {
+		t.Run(b.name, func(t *testing.T) {
+			keys := b.binding.Keys()
+			if len(keys) == 0 {
+				t.Errorf("binding %s has no keys", b.name)
+			}
+
+			h := b.binding.Help()
+			if h.Key == "" {
+				t.Errorf("binding %s has empty help key", b.name)
+			}
+			if h.Desc == "" {
+				t.Errorf("binding %s has empty help description", b.name)
+			}
+		})
+	}
+}
