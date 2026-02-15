@@ -1,0 +1,104 @@
+name: Tag
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: check skip conditions
+        id: skip
+        run: |
+          MSG=$(git log -1 --format='%s%n%b')
+          if echo "$MSG" | grep -qiE '\[(skip-tag|no-tag)\]'; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: detect changed modules
+        if: steps.skip.outputs.skip == 'false'
+        id: changed
+        run: |
+          MODULES=()
+          for dir in pkg/zapp pkg/zcache pkg/zcrypto pkg/zfilesystem pkg/zoptions pkg/zstyle pkg/zsync; do
+            if git diff --quiet HEAD~1 -- "$dir"; then
+              continue
+            fi
+            MODULES+=("$dir")
+          done
+
+          if [ ${#MODULES[@]} -eq 0 ]; then
+            echo "modules=" >> "$GITHUB_OUTPUT"
+            echo "No modules changed, nothing to tag"
+          else
+            printf '%s\n' "${MODULES[@]}"
+            printf 'modules=%s\n' "$(IFS=,; echo "${MODULES[*]}")" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: tag changed modules
+        if: steps.skip.outputs.skip == 'false' && steps.changed.outputs.modules != ''
+        run: |
+          MSG=$(git log -1 --format='%s%n%b')
+
+          # determine bump type from commit message
+          BUMP="patch"
+          if echo "$MSG" | grep -qiE '\[major\]'; then
+            BUMP="major"
+          elif echo "$MSG" | grep -qiE '\[minor\]'; then
+            BUMP="minor"
+          fi
+          echo "Bump type: $BUMP"
+
+          IFS=',' read -ra MODULES <<< "${{ steps.changed.outputs.modules }}"
+          for mod in "${MODULES[@]}"; do
+            NAME=$(basename "$mod")
+            PREFIX="pkg/${NAME}/v"
+
+            # find latest tag for this module
+            LATEST=$(git tag -l "${PREFIX}*" --sort=-v:refname | head -n1)
+
+            if [ -z "$LATEST" ]; then
+              MAJOR=0 MINOR=0 PATCH=0
+            else
+              VERSION="${LATEST#"$PREFIX"}"
+              IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+            fi
+
+            case "$BUMP" in
+              major)
+                MAJOR=$((MAJOR + 1))
+                MINOR=0
+                PATCH=0
+                ;;
+              minor)
+                MINOR=$((MINOR + 1))
+                PATCH=0
+                ;;
+              patch)
+                PATCH=$((PATCH + 1))
+                ;;
+            esac
+
+            NEW_TAG="${PREFIX}${MAJOR}.${MINOR}.${PATCH}"
+
+            # idempotent — skip if tag already exists
+            if git rev-parse "$NEW_TAG" >/dev/null 2>&1; then
+              echo "Tag $NEW_TAG already exists, skipping"
+              continue
+            fi
+
+            echo "Creating tag: $NEW_TAG"
+            git tag "$NEW_TAG"
+          done
+
+          git push --tags
