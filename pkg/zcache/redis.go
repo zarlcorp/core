@@ -11,6 +11,11 @@ import (
 	"github.com/zarlcorp/core/pkg/zoptions"
 )
 
+const defaultPrefix = "zcache:"
+
+// clearBatchSize is the number of keys to delete per DEL call during Clear.
+const clearBatchSize = 100
+
 var (
 	_ Reader[string, any]     = (*RedisCache[string, any])(nil)
 	_ Writer[string, any]     = (*RedisCache[string, any])(nil)
@@ -51,12 +56,14 @@ func WithTTL[K comparable, V any](ttl time.Duration) RedisOption[K, V] {
 }
 
 // NewRedisCache creates a new Redis-backed cache with the specified configuration.
+// applies a default prefix of "zcache:" to prevent bare "*" scans in Clear.
 func NewRedisCache[K comparable, V any](opts ...RedisOption[K, V]) *RedisCache[K, V] {
 	client := redis.NewClient(&redis.Options{
 		Addr: "localhost:6379",
 	})
 	rc := RedisCache[K, V]{
 		client: client,
+		prefix: defaultPrefix,
 	}
 	for _, opt := range opts {
 		opt(&rc)
@@ -73,7 +80,10 @@ func (c *RedisCache[K, V]) Set(ctx context.Context, key K, value V) error {
 	default:
 	}
 
-	redisKey := c.makeKey(key)
+	redisKey, err := c.makeKey(key)
+	if err != nil {
+		return err
+	}
 
 	data, err := json.Marshal(value)
 	if err != nil {
@@ -93,7 +103,11 @@ func (c *RedisCache[K, V]) Get(ctx context.Context, key K) (V, error) {
 	default:
 	}
 
-	redisKey := c.makeKey(key)
+	redisKey, err := c.makeKey(key)
+	if err != nil {
+		var zero V
+		return zero, err
+	}
 
 	result, err := c.client.Get(ctx, redisKey).Result()
 	if err != nil {
@@ -122,7 +136,10 @@ func (c *RedisCache[K, V]) Delete(ctx context.Context, key K) (bool, error) {
 	default:
 	}
 
-	redisKey := c.makeKey(key)
+	redisKey, err := c.makeKey(key)
+	if err != nil {
+		return false, err
+	}
 
 	result, err := c.client.Del(ctx, redisKey).Result()
 	if err != nil {
@@ -133,6 +150,7 @@ func (c *RedisCache[K, V]) Delete(ctx context.Context, key K) (bool, error) {
 }
 
 // Clear removes all entries with the configured prefix from Redis.
+// keys are deleted in batches to avoid accumulating unbounded slices.
 func (c *RedisCache[K, V]) Clear(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
@@ -141,26 +159,33 @@ func (c *RedisCache[K, V]) Clear(ctx context.Context) error {
 	}
 
 	pattern := c.prefix + "*"
-
 	iter := c.client.Scan(ctx, 0, pattern, 0).Iterator()
-	keys := make([]string, 0)
+	batch := make([]string, 0, clearBatchSize)
 
 	for iter.Next(ctx) {
-		keys = append(keys, iter.Val())
+		batch = append(batch, iter.Val())
+		if len(batch) >= clearBatchSize {
+			if err := c.client.Del(ctx, batch...).Err(); err != nil {
+				return err
+			}
+			batch = batch[:0]
+		}
 	}
 
 	if err := iter.Err(); err != nil {
 		return err
 	}
 
-	if len(keys) > 0 {
-		return c.client.Del(ctx, keys...).Err()
+	if len(batch) > 0 {
+		return c.client.Del(ctx, batch...).Err()
 	}
 
 	return nil
 }
 
 // Len returns the approximate number of entries with the configured prefix in Redis.
+// the count is approximate under concurrent access because SCAN does not
+// provide a point-in-time snapshot; keys may be added or removed mid-scan.
 func (c *RedisCache[K, V]) Len(ctx context.Context) (int, error) {
 	select {
 	case <-ctx.Done():
@@ -184,9 +209,17 @@ func (c *RedisCache[K, V]) Len(ctx context.Context) (int, error) {
 	return count, nil
 }
 
-func (c *RedisCache[K, V]) makeKey(key K) string {
-	keyBytes, _ := json.Marshal(key)
-	return c.prefix + string(keyBytes)
+// Prefix returns the key prefix used by this cache instance.
+func (c *RedisCache[K, V]) Prefix() string {
+	return c.prefix
+}
+
+func (c *RedisCache[K, V]) makeKey(key K) (string, error) {
+	keyBytes, err := json.Marshal(key)
+	if err != nil {
+		return "", fmt.Errorf("marshal cache key: %w", err)
+	}
+	return c.prefix + string(keyBytes), nil
 }
 
 // Healthy checks if Redis is accessible by pinging it.

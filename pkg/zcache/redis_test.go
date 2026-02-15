@@ -9,17 +9,13 @@ import (
 
 func TestRedisCache_Constructor(t *testing.T) {
 	tests := []struct {
-		name  string
-		opts  []zcache.RedisOption[string, int]
-		check func(t *testing.T, c any)
+		name       string
+		opts       []zcache.RedisOption[string, int]
+		wantPrefix string
 	}{
 		{
-			name: "with default client",
-			check: func(t *testing.T, c any) {
-				if c == nil {
-					t.Error("NewRedisCache() returned nil")
-				}
-			},
+			name:       "default prefix applied when none configured",
+			wantPrefix: "zcache:",
 		},
 		{
 			name: "with custom client",
@@ -27,29 +23,26 @@ func TestRedisCache_Constructor(t *testing.T) {
 				zcache.WithPrefix[string, int]("test"),
 				zcache.WithClient[string, int](&redis.Client{}),
 			},
-			check: func(t *testing.T, c any) {
-				if c == nil {
-					t.Error("NewRedisCache() with custom client returned nil")
-				}
-			},
+			wantPrefix: "test",
 		},
 		{
-			name: "with prefix",
+			name: "with custom prefix",
 			opts: []zcache.RedisOption[string, int]{
-				zcache.WithPrefix[string, int]("test"),
+				zcache.WithPrefix[string, int]("myapp:"),
 			},
-			check: func(t *testing.T, c any) {
-				if c == nil {
-					t.Error("NewRedisCache() with prefix returned nil")
-				}
-			},
+			wantPrefix: "myapp:",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := zcache.NewRedisCache[string, int](tt.opts...)
-			tt.check(t, c)
+			if c == nil {
+				t.Fatal("NewRedisCache() returned nil")
+			}
+			if got := c.Prefix(); got != tt.wantPrefix {
+				t.Errorf("Prefix() = %q, want %q", got, tt.wantPrefix)
+			}
 		})
 	}
 }
@@ -82,4 +75,54 @@ func TestRedisCache_Types(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestRedisCache_ClearPrefixIsolation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping Redis tests in short mode")
+	}
+
+	ctx := t.Context()
+
+	// two caches with different prefixes sharing the same redis
+	cacheA := zcache.NewRedisCache[string, int](
+		zcache.WithPrefix[string, int]("isolation-a:"),
+	)
+	cacheB := zcache.NewRedisCache[string, int](
+		zcache.WithPrefix[string, int]("isolation-b:"),
+	)
+
+	// seed both caches
+	if err := cacheA.Set(ctx, "x", 1); err != nil {
+		t.Fatalf("Set cacheA: %v", err)
+	}
+	if err := cacheB.Set(ctx, "y", 2); err != nil {
+		t.Fatalf("Set cacheB: %v", err)
+	}
+
+	// clear only cacheA
+	if err := cacheA.Clear(ctx); err != nil {
+		t.Fatalf("Clear cacheA: %v", err)
+	}
+
+	// cacheA should be empty
+	lenA, err := cacheA.Len(ctx)
+	if err != nil {
+		t.Fatalf("Len cacheA: %v", err)
+	}
+	if lenA != 0 {
+		t.Errorf("cacheA Len() = %d after Clear, want 0", lenA)
+	}
+
+	// cacheB should still have its entry
+	val, err := cacheB.Get(ctx, "y")
+	if err != nil {
+		t.Fatalf("Get cacheB: %v", err)
+	}
+	if val != 2 {
+		t.Errorf("cacheB Get(y) = %d, want 2", val)
+	}
+
+	// cleanup
+	cacheB.Clear(ctx)
 }
