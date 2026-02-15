@@ -52,8 +52,8 @@ func (mfs *MemFS) ReadFile(filename string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	file, err := mfs.files.Get(p)
-	if err != nil {
+	file, ok := mfs.files.Get(p)
+	if !ok {
 		return nil, os.ErrNotExist
 	}
 
@@ -112,8 +112,8 @@ func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (File, error
 	}
 
 	// For read operations, check if file exists
-	file, err := mfs.files.Get(p)
-	if err != nil {
+	file, ok := mfs.files.Get(p)
+	if !ok {
 		return nil, os.ErrNotExist
 	}
 
@@ -135,8 +135,8 @@ func (mfs *MemFS) WalkDir(root string, fn fs.WalkDirFunc) error {
 	keys := mfs.files.Keys()
 
 	for _, filename := range keys {
-		file, err := mfs.files.Get(filename)
-		if err != nil {
+		file, ok := mfs.files.Get(filename)
+		if !ok {
 			continue
 		}
 
@@ -237,8 +237,8 @@ func (fh *memFileHandle) Stat() (fs.FileInfo, error) {
 		return nil, fs.ErrClosed
 	}
 
-	file, err := fh.mfs.files.Get(fh.filename)
-	if err != nil {
+	file, ok := fh.mfs.files.Get(fh.filename)
+	if !ok {
 		// If file doesn't exist yet (new file), return basic info
 		return &memFileInfo{
 			name:    filepath.Base(fh.filename),

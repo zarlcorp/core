@@ -27,8 +27,8 @@ func (s *ZSet[T]) Add(value T) {
 // Contains checks if a value exists in the set.
 // Returns true if the value is present, false otherwise.
 func (s *ZSet[T]) Contains(value T) bool {
-	_, err := s.m.Get(value)
-	return err == nil
+	_, ok := s.m.Get(value)
+	return ok
 }
 
 // Remove deletes a value from the set.

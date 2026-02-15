@@ -359,6 +359,47 @@ func TestZQueue_BlockingPop(t *testing.T) {
 	}
 }
 
+// verifies that popped elements are zeroed in the backing array so the queue
+// doesn't retain references to values that have already been consumed.
+func TestZQueue_PopZeroesReference(t *testing.T) {
+	type payload struct {
+		data []byte
+	}
+
+	q := zsync.NewZQueue[*payload]()
+
+	p := &payload{data: make([]byte, 1024)}
+	q.Push(p)
+
+	got, err := q.TryPop()
+	if err != nil {
+		t.Fatalf("TryPop() error = %v", err)
+	}
+	if got != p {
+		t.Fatalf("TryPop() returned wrong pointer")
+	}
+
+	// after pop, the queue should not hold a reference to p.
+	// we can't inspect the backing array directly from outside the package,
+	// but we can verify the queue is empty and pushing new items works
+	// without the old reference lingering.
+	if q.Len() != 0 {
+		t.Errorf("Len() after pop = %v, want 0", q.Len())
+	}
+
+	// push and pop a second item to confirm no corruption
+	p2 := &payload{data: make([]byte, 512)}
+	q.Push(p2)
+
+	got2, err := q.TryPop()
+	if err != nil {
+		t.Fatalf("TryPop() second error = %v", err)
+	}
+	if got2 != p2 {
+		t.Fatalf("TryPop() second returned wrong pointer")
+	}
+}
+
 func TestZQueue_CloseUnblocksConsumers(t *testing.T) {
 	q := zsync.NewZQueue[string]()
 

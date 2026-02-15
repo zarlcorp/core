@@ -150,8 +150,8 @@ func (ss *stdSet) Add(item string) {
 }
 
 func (ss *stdSet) Contains(item string) bool {
-	_, err := ss.m.Get(item)
-	return err == nil
+	_, ok := ss.m.Get(item)
+	return ok
 }
 
 func BenchmarkStdSet_Add(b *testing.B) {

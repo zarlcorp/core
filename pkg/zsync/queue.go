@@ -58,6 +58,8 @@ func (q *ZQueue[T]) Pop() (T, error) {
 	}
 
 	item := q.items[0]
+	var zero T
+	q.items[0] = zero
 	q.items = q.items[1:]
 	return item, nil
 }
@@ -105,6 +107,8 @@ func (q *ZQueue[T]) PopContext(ctx context.Context) (T, error) {
 	}
 
 	item := q.items[0]
+	var zero T
+	q.items[0] = zero
 	q.items = q.items[1:]
 	return item, nil
 }
@@ -121,6 +125,8 @@ func (q *ZQueue[T]) TryPop() (T, error) {
 	}
 
 	item := q.items[0]
+	var zero T
+	q.items[0] = zero
 	q.items = q.items[1:]
 	return item, nil
 }
