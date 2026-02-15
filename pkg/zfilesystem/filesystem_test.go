@@ -3,7 +3,9 @@ package zfilesystem_test
 import (
 	"bytes"
 	"errors"
+	iofs "io/fs"
 	"os"
+	"sort"
 	"strings"
 	"testing"
 
@@ -414,5 +416,208 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 				t.Errorf("MkdirAll(\"\") should not escape: %v", err)
 			}
 		})
+	})
+
+	t.Run("WalkDir root filtering", func(t *testing.T) {
+		// set up files in two separate directories
+		if err := fs.MkdirAll("alpha", 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		if err := fs.MkdirAll("beta", 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		fs.WriteFile("alpha/one.txt", []byte("a1"), 0o644)
+		fs.WriteFile("alpha/two.txt", []byte("a2"), 0o644)
+		fs.WriteFile("beta/three.txt", []byte("b3"), 0o644)
+		defer func() {
+			fs.Remove("alpha/one.txt")
+			fs.Remove("alpha/two.txt")
+			fs.Remove("beta/three.txt")
+		}()
+
+		// walk only "alpha" — should not see "beta" files
+		var paths []string
+		err := fs.WalkDir("alpha", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			paths = append(paths, path)
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir: %v", err)
+		}
+
+		for _, p := range paths {
+			if strings.HasPrefix(p, "beta") {
+				t.Errorf("WalkDir(\"alpha\") yielded path outside root: %s", p)
+			}
+		}
+
+		// should contain alpha files
+		sort.Strings(paths)
+		wantFiles := []string{"alpha/one.txt", "alpha/two.txt"}
+		for _, w := range wantFiles {
+			found := false
+			for _, p := range paths {
+				if p == w {
+					found = true
+					break
+				}
+			}
+			if !found {
+				t.Errorf("WalkDir(\"alpha\") missing: %s (got %v)", w, paths)
+			}
+		}
+	})
+
+	t.Run("WalkDir lexical order", func(t *testing.T) {
+		if err := fs.MkdirAll("ordered", 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		// write in non-alphabetical order
+		names := []string{"ordered/cherry.txt", "ordered/apple.txt", "ordered/banana.txt"}
+		for _, n := range names {
+			fs.WriteFile(n, []byte("x"), 0o644)
+		}
+		defer func() {
+			for _, n := range names {
+				fs.Remove(n)
+			}
+		}()
+
+		var walked []string
+		err := fs.WalkDir("ordered", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			walked = append(walked, path)
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir: %v", err)
+		}
+
+		// verify sorted
+		for i := 1; i < len(walked); i++ {
+			if walked[i] < walked[i-1] {
+				t.Errorf("WalkDir not in lexical order: %v", walked)
+				break
+			}
+		}
+	})
+
+	t.Run("WalkDir yields directory entries", func(t *testing.T) {
+		if err := fs.MkdirAll("dirtest/sub", 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		fs.WriteFile("dirtest/sub/file.txt", []byte("data"), 0o644)
+		defer fs.Remove("dirtest/sub/file.txt")
+
+		var dirs []string
+		err := fs.WalkDir("dirtest", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				dirs = append(dirs, path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir: %v", err)
+		}
+
+		// should yield both "dirtest" (the root) and "dirtest/sub"
+		want := []string{"dirtest", "dirtest/sub"}
+		if len(dirs) != len(want) {
+			t.Fatalf("directory entries = %v, want %v", dirs, want)
+		}
+		for i := range want {
+			if dirs[i] != want[i] {
+				t.Errorf("dirs[%d] = %q, want %q", i, dirs[i], want[i])
+			}
+		}
+	})
+
+	t.Run("WalkDir root dot yields directory entry", func(t *testing.T) {
+		fs.WriteFile("dotroot.txt", []byte("x"), 0o644)
+		defer fs.Remove("dotroot.txt")
+
+		var first string
+		var firstIsDir bool
+		err := fs.WalkDir(".", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if first == "" {
+				first = path
+				firstIsDir = d.IsDir()
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir: %v", err)
+		}
+
+		if first != "." {
+			t.Errorf("first entry = %q, want \".\"", first)
+		}
+		if !firstIsDir {
+			t.Error("root \".\" entry should be a directory")
+		}
+	})
+
+	t.Run("MkdirAll creates visible directory entries", func(t *testing.T) {
+		if err := fs.MkdirAll("emptydir/nested", 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+
+		var dirs []string
+		err := fs.WalkDir("emptydir", func(path string, d os.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+			if d.IsDir() {
+				dirs = append(dirs, path)
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir: %v", err)
+		}
+
+		want := []string{"emptydir", "emptydir/nested"}
+		if len(dirs) != len(want) {
+			t.Fatalf("directory entries = %v, want %v", dirs, want)
+		}
+		for i := range want {
+			if dirs[i] != want[i] {
+				t.Errorf("dirs[%d] = %q, want %q", i, dirs[i], want[i])
+			}
+		}
+	})
+
+	t.Run("WalkDir directory entry has correct type", func(t *testing.T) {
+		if err := fs.MkdirAll("typedir", 0o755); err != nil {
+			t.Fatalf("MkdirAll: %v", err)
+		}
+		fs.WriteFile("typedir/f.txt", []byte("x"), 0o644)
+		defer fs.Remove("typedir/f.txt")
+
+		err := fs.WalkDir("typedir", func(path string, d os.DirEntry, walkErr error) error {
+			if walkErr != nil {
+				return walkErr
+			}
+			if d.IsDir() {
+				if d.Type()&iofs.ModeDir == 0 {
+					t.Errorf("directory %q Type() missing ModeDir", path)
+				}
+			}
+			return nil
+		})
+		if err != nil {
+			t.Fatalf("WalkDir: %v", err)
+		}
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ var _ ReadWriteFileFS = (*MemFS)(nil)
 // It implements ReadWriteFileFS and is safe for concurrent use.
 type MemFS struct {
 	files *zsync.ZMap[string, *memFile]
+	dirs  *zsync.ZSet[string]
 }
 
 type memFile struct {
@@ -30,6 +32,7 @@ type memFile struct {
 func NewMemFS() *MemFS {
 	return &MemFS{
 		files: zsync.NewZMap[string, *memFile](),
+		dirs:  zsync.NewZSet[string](),
 	}
 }
 
@@ -71,8 +74,21 @@ func (mfs *MemFS) WriteFile(filename string, data []byte, perm fs.FileMode) erro
 		modTime: time.Now(),
 		mode:    perm,
 	})
+	mfs.addParentDirs(p)
 
 	return nil
+}
+
+// addParentDirs records all parent directories for a path.
+func (mfs *MemFS) addParentDirs(p string) {
+	for {
+		parent := filepath.Dir(p)
+		if parent == "." || parent == p {
+			return
+		}
+		mfs.dirs.Add(parent)
+		p = parent
+	}
 }
 
 // Remove removes a file from memory.
@@ -87,10 +103,19 @@ func (mfs *MemFS) Remove(filename string) error {
 	return nil
 }
 
-// MkdirAll is a no-op for in-memory filesystem as directories are implicit.
+// MkdirAll creates a directory and all necessary parents.
 func (mfs *MemFS) MkdirAll(path string, perm fs.FileMode) error {
-	_, err := cleanPath(path)
-	return err
+	p, err := cleanPath(path)
+	if err != nil {
+		return err
+	}
+	// "." is the root, no need to record
+	if p == "." {
+		return nil
+	}
+	mfs.dirs.Add(p)
+	mfs.addParentDirs(p)
+	return nil
 }
 
 // OpenFile opens a file in memory with the given flags.
@@ -125,35 +150,111 @@ func (mfs *MemFS) OpenFile(name string, flag int, perm fs.FileMode) (File, error
 	}, nil
 }
 
-// WalkDir walks through all files in memory.
+// WalkDir walks the file tree rooted at root, calling fn for each file or
+// directory in the tree, including root. Entries are yielded in lexical order
+// and directory entries are synthesized from file paths.
 func (mfs *MemFS) WalkDir(root string, fn fs.WalkDirFunc) error {
-	_, err := cleanPath(root)
+	root, err := cleanPath(root)
 	if err != nil {
 		return err
 	}
 
-	keys := mfs.files.Keys()
+	// collect all entries under root: files + explicit dirs + synthesized dirs
+	dirSet := make(map[string]struct{})
+	fileSet := make(map[string]struct{})
 
-	for _, filename := range keys {
-		file, ok := mfs.files.Get(filename)
-		if !ok {
+	for _, k := range mfs.files.Keys() {
+		if !pathMatchesRoot(root, k) {
+			continue
+		}
+		fileSet[k] = struct{}{}
+		// synthesize parent dirs between root and this file
+		for p := filepath.Dir(k); p != root && pathMatchesRoot(root, p); p = filepath.Dir(p) {
+			dirSet[p] = struct{}{}
+		}
+	}
+
+	// include explicit dirs that match root (but not root itself — added separately)
+	for _, d := range mfs.dirs.Values() {
+		if d != root && pathMatchesRoot(root, d) {
+			dirSet[d] = struct{}{}
+		}
+	}
+
+	// remove root from dirSet if synthesized above
+	delete(dirSet, root)
+
+	// build sorted list: root first, then all dirs and files in lexical order
+	entries := make([]string, 0, len(dirSet)+len(fileSet)+1)
+	entries = append(entries, root)
+	for d := range dirSet {
+		entries = append(entries, d)
+	}
+	for f := range fileSet {
+		entries = append(entries, f)
+	}
+	sort.Strings(entries[1:])
+
+	// track which directories to skip
+	var skipPrefix string
+
+	for _, path := range entries {
+		// if we're skipping a directory subtree, check prefix
+		if skipPrefix != "" {
+			if strings.HasPrefix(path, skipPrefix) {
+				continue
+			}
+			skipPrefix = ""
+		}
+
+		_, isFile := fileSet[path]
+		if isFile {
+			file, ok := mfs.files.Get(path)
+			if !ok {
+				continue
+			}
+			info := &memFileInfo{
+				name:    filepath.Base(path),
+				size:    int64(len(file.data)),
+				mode:    file.mode,
+				modTime: file.modTime,
+			}
+			if err := fn(path, &memDirEntry{info: info}, nil); err != nil {
+				if err == fs.SkipDir || err == fs.SkipAll {
+					return nil
+				}
+				return err
+			}
 			continue
 		}
 
+		// directory entry
 		info := &memFileInfo{
-			name:    filepath.Base(filename),
-			size:    int64(len(file.data)),
-			mode:    file.mode,
-			modTime: file.modTime,
+			name:    filepath.Base(path),
+			mode:    fs.ModeDir | 0o755,
+			modTime: time.Now(),
 		}
-
-		entry := &memDirEntry{info: info}
-		if err := fn(filename, entry, nil); err != nil {
+		if err := fn(path, &memDirEntry{info: info}, nil); err != nil {
+			if err == fs.SkipAll {
+				return nil
+			}
+			if err == fs.SkipDir {
+				skipPrefix = path + string(filepath.Separator)
+				continue
+			}
 			return err
 		}
 	}
 
 	return nil
+}
+
+// pathMatchesRoot returns true if path is under root or equal to root.
+func pathMatchesRoot(root, path string) bool {
+	if root == "." {
+		return true
+	}
+	return path == root || strings.HasPrefix(path, root+string(filepath.Separator))
 }
 
 // ClearCacheFiles removes all files with .cache extension from memory.
