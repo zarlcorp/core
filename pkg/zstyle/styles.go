@@ -4,10 +4,10 @@ import "github.com/charmbracelet/lipgloss"
 
 // text styles
 var (
-	Title     = lipgloss.NewStyle().Bold(true).Foreground(Cyan)
-	Subtitle  = lipgloss.NewStyle().Bold(true).Foreground(Muted)
-	Highlight = lipgloss.NewStyle().Foreground(Orange)
-	MutedText = lipgloss.NewStyle().Foreground(Muted)
+	Title     = lipgloss.NewStyle().Bold(true).Foreground(Lavender)
+	Subtitle  = lipgloss.NewStyle().Bold(true).Foreground(Subtext1)
+	Highlight = lipgloss.NewStyle().Foreground(Peach)
+	MutedText = lipgloss.NewStyle().Foreground(Overlay1)
 )
 
 // status indicators
@@ -19,6 +19,6 @@ var (
 
 // structural styles
 var (
-	Border       = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(Subtle)
-	ActiveBorder = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(Cyan)
+	Border       = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(Surface1)
+	ActiveBorder = lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(Lavender)
 )
