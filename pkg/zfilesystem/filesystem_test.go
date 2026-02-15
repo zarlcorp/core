@@ -1,12 +1,13 @@
 package zfilesystem_test
 
 import (
+	"bytes"
 	"errors"
 	"os"
 	"strings"
 	"testing"
 
-	zfilesystem "github.com/zarlcorp/core/pkg/zfilesystem"
+	"github.com/zarlcorp/core/pkg/zfilesystem"
 )
 
 func TestReadWriteFileFS_Contract(t *testing.T) {
@@ -53,31 +54,31 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 				name:     "simple text file",
 				filename: "test.txt",
 				data:     []byte("hello world"),
-				perm:     0644,
+				perm:     0o644,
 			},
 			{
 				name:     "binary data",
 				filename: "binary.dat",
 				data:     []byte{0x00, 0x01, 0x02, 0xFF, 0xFE},
-				perm:     0644,
+				perm:     0o644,
 			},
 			{
 				name:     "empty file",
 				filename: "empty.txt",
 				data:     []byte{},
-				perm:     0644,
+				perm:     0o644,
 			},
 			{
 				name:     "large content",
 				filename: "large.txt",
 				data:     []byte(strings.Repeat("x", 10000)),
-				perm:     0644,
+				perm:     0o644,
 			},
 			{
 				name:     "special characters in content",
 				filename: "special.txt",
 				data:     []byte("hello\nworld\t\r\n日本語"),
-				perm:     0644,
+				perm:     0o644,
 			},
 		}
 
@@ -93,7 +94,7 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 					t.Fatalf("ReadFile() error = %v", err)
 				}
 
-				if string(data) != string(tt.data) {
+				if !bytes.Equal(data, tt.data) {
 					t.Errorf("ReadFile() data = %q, want %q", string(data), string(tt.data))
 				}
 
@@ -122,7 +123,7 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 				name: "remove existing file",
 				setup: func() string {
 					filename := "to-remove.txt"
-					fs.WriteFile(filename, []byte("test"), 0644)
+					fs.WriteFile(filename, []byte("test"), 0o644)
 					return filename
 				},
 				error: nil,
@@ -169,12 +170,12 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 		filename := "overwrite-test.txt"
 		defer fs.Remove(filename)
 
-		err := fs.WriteFile(filename, []byte("original"), 0644)
+		err := fs.WriteFile(filename, []byte("original"), 0o644)
 		if err != nil {
 			t.Fatalf("WriteFile() error = %v", err)
 		}
 
-		err = fs.WriteFile(filename, []byte("overwritten"), 0644)
+		err = fs.WriteFile(filename, []byte("overwritten"), 0o644)
 		if err != nil {
 			t.Fatalf("WriteFile() overwrite error = %v", err)
 		}
@@ -198,7 +199,7 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 		}
 
 		for filename, content := range files {
-			err := fs.WriteFile(filename, content, 0644)
+			err := fs.WriteFile(filename, content, 0o644)
 			if err != nil {
 				t.Fatalf("WriteFile(%s) error = %v", filename, err)
 			}
@@ -219,7 +220,6 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 			}
 			return nil
 		})
-
 		if err != nil {
 			t.Fatalf("WalkDir() error = %v", err)
 		}
@@ -245,7 +245,7 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 	t.Run("WalkDir with filter function", func(t *testing.T) {
 		files := []string{"filter-test.txt", "filter-data.json", "filter-config.yaml", "filter-script.sh"}
 		for _, filename := range files {
-			fs.WriteFile(filename, []byte("content"), 0644)
+			fs.WriteFile(filename, []byte("content"), 0o644)
 		}
 		defer func() {
 			for _, filename := range files {
@@ -263,7 +263,6 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 			}
 			return nil
 		})
-
 		if err != nil {
 			t.Fatalf("WalkDir() error = %v", err)
 		}
@@ -283,7 +282,7 @@ func testReadWriteFileFS(t *testing.T, fs zfilesystem.ReadWriteFileFS) {
 	t.Run("WalkDir early termination", func(t *testing.T) {
 		files := []string{"term1.txt", "term2.txt", "term3.txt"}
 		for _, filename := range files {
-			fs.WriteFile(filename, []byte("content"), 0644)
+			fs.WriteFile(filename, []byte("content"), 0o644)
 		}
 		defer func() {
 			for _, filename := range files {

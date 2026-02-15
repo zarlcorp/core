@@ -93,7 +93,7 @@ func (a *App) Close() error {
 	return a.err
 }
 
-// SignalContext returns a context that is cancelled when SIGINT or SIGTERM
+// SignalContext returns a context that is canceled when SIGINT or SIGTERM
 // is received, or when the returned cancel func is called.
 func SignalContext(parent context.Context) (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(parent, syscall.SIGINT, syscall.SIGTERM)

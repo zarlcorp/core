@@ -52,8 +52,8 @@ func TestMemoryCache_Constructor(t *testing.T) {
 		{
 			name: "custom struct types",
 			build: func() any {
-				type customKey struct{ id int }
-				type customValue struct{ data string }
+				type customKey struct{ ID int }
+				type customValue struct{ Data string }
 				return zcache.NewMemoryCache[customKey, customValue]()
 			},
 			check: func(t *testing.T, c any) {

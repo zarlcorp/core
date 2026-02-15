@@ -6,9 +6,7 @@ import (
 	"path/filepath"
 )
 
-var (
-	_ ReadWriteFileFS = (*OSFileSystem)(nil)
-)
+var _ ReadWriteFileFS = (*OSFileSystem)(nil)
 
 // OSFileSystem implements ReadWriteFileFS using the standard os package.
 type OSFileSystem struct {

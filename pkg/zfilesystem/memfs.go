@@ -11,9 +11,7 @@ import (
 	"github.com/zarlcorp/core/pkg/zsync"
 )
 
-var (
-	_ ReadWriteFileFS = (*MemFS)(nil)
-)
+var _ ReadWriteFileFS = (*MemFS)(nil)
 
 // MemFS provides an in-memory filesystem implementation.
 // It implements ReadWriteFileFS and is safe for concurrent use.
