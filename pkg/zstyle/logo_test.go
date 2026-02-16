@@ -14,10 +14,10 @@ func TestLogo(t *testing.T) {
 		}
 	})
 
-	t.Run("five lines", func(t *testing.T) {
+	t.Run("three lines", func(t *testing.T) {
 		lines := strings.Split(zstyle.Logo, "\n")
-		if len(lines) != 5 {
-			t.Errorf("Logo has %d lines, want 5", len(lines))
+		if len(lines) != 3 {
+			t.Errorf("Logo has %d lines, want 3", len(lines))
 		}
 	})
 
@@ -43,7 +43,7 @@ func TestStyledLogo(t *testing.T) {
 	}
 	// lipgloss may or may not emit ANSI in test environments,
 	// so we just verify the logo text survives styling
-	if !strings.Contains(got, "╱") {
+	if !strings.Contains(got, "|") {
 		t.Error("StyledLogo output missing logo content")
 	}
 }
