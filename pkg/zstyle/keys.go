@@ -9,7 +9,7 @@ var (
 	KeyUp     = key.NewBinding(key.WithKeys("k", "up"), key.WithHelp("↑/k", "up"))
 	KeyDown   = key.NewBinding(key.WithKeys("j", "down"), key.WithHelp("↓/j", "down"))
 	KeyEnter  = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "confirm"))
-	KeyBack   = key.NewBinding(key.WithKeys("esc", "backspace"), key.WithHelp("esc", "back"))
+	KeyBack   = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back"))
 	KeyTab    = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next"))
 	KeyFilter = key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter"))
 )
