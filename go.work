@@ -6,6 +6,7 @@ use (
 	./pkg/zcrypto
 	./pkg/zfilesystem
 	./pkg/zoptions
+	./pkg/zstore
 	./pkg/zstyle
 	./pkg/zsync
 )
