@@ -158,9 +158,9 @@ Task tool call:
     - When done, ensure all tests pass and stop
 ```
 
-#### Step 6: Wait for completion and auto-finish
+#### Step 6: Wait for completion and create PR
 
-When the sub-agent completes (you'll get a task notification), launch a `git-workflow-manager` agent to handle all git operations. This frees you to move on to other work immediately.
+When the sub-agent completes (you'll get a task notification), launch a `git-workflow-manager` agent to handle git operations. The gitops agent creates the PR but does **NOT** merge it — that happens after review.
 
 ```
 Task tool call:
@@ -187,14 +187,84 @@ Task tool call:
          --base main
     6. gh issue comment <issue-number> --repo zarlcorp/<repo-name> \
          --body "PR created: <pr-url>"
-    7. gh pr merge <pr-number> --repo zarlcorp/<repo-name> \
-         --squash --delete-branch
 
-    Do NOT add Co-Authored-By lines to commits.
-    Report the PR URL when done.
+    Do NOT merge the PR. Do NOT add Co-Authored-By lines to commits.
+    Report the PR number and URL when done.
 ```
 
-#### Step 7: Report
+#### Step 7: Review PR against spec
+
+When the gitops agent completes and reports the PR number, launch a review agent. The review agent evaluates the PR against the spec and either merges or requests changes.
+
+```
+Task tool call:
+  description: "<id> review"
+  subagent_type: "general-purpose"
+  run_in_background: true
+  prompt: |
+    You are a code review agent. Review PR #<pr-number> on zarlcorp/<repo-name> against the spec.
+
+    Spec: zarlcorp/core/.manager/specs/<id>-<name>.md
+    Target repo: zarlcorp/<repo-name>
+    PR number: <pr-number>
+    GitHub issue: #<issue-number>
+
+    ## Review process
+
+    1. Read the spec file to understand all requirements
+    2. Read the PR diff:
+       gh pr diff <pr-number> --repo zarlcorp/<repo-name>
+    3. For each changed file, read the full file for context
+    4. Evaluate against the criteria below
+
+    ## Spec compliance
+    For each requirement in the spec, verify:
+    - Is it implemented?
+    - Does it meet the acceptance criteria?
+    - Are there unrelated changes or scope creep?
+
+    ## Code quality (CLAUDE.md standards)
+    Check for:
+    - Error handling: no "failed to", "unable to", "could not" prefixes
+    - Naming: scope-based (short for small scope, descriptive for large)
+    - Early returns over if/else chains
+    - No duplicated code in branches
+    - Tests: table-driven preferred, real implementations over mocks
+    - No unnecessary abstractions or over-engineering
+
+    ## Decision
+
+    **If approved** (all requirements met, code quality acceptable):
+    1. Post a review summary:
+       gh pr comment <pr-number> --repo zarlcorp/<repo-name> \
+         --body "## Review: Approved
+
+       <checklist of requirements verified>
+
+       <any minor observations (not blocking)>"
+    2. Merge the PR:
+       gh pr merge <pr-number> --repo zarlcorp/<repo-name> \
+         --squash --delete-branch
+
+    **If changes needed** (missing requirements or quality issues):
+    1. Post detailed feedback:
+       gh pr comment <pr-number> --repo zarlcorp/<repo-name> \
+         --body "## Review: Changes Requested
+
+       <what's missing or needs fixing>
+
+       <specific file/line references where possible>"
+    2. Do NOT merge
+    3. Report what needs fixing so the PM can re-delegate
+
+    ## Guidelines
+    - Be strict on spec compliance — every requirement must be met
+    - Be practical on style — don't block on minor formatting if logic is sound
+    - Focus on correctness, not cosmetics
+    - Do NOT add Co-Authored-By lines to commits
+```
+
+#### Step 8: Report
 For each launched agent, report:
 - Work item ID and title
 - Agent role
@@ -203,4 +273,5 @@ For each launched agent, report:
 - Working directory
 - GitHub issue number
 
-Tell the user to run `/status` to monitor progress, or that the PR is ready for `/review <id>`.
+If the review agent approved and merged, report the merge.
+If the review agent requested changes, report what needs fixing and suggest re-delegation.
