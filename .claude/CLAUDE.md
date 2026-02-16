@@ -178,6 +178,13 @@ git worktree remove .worktrees/<id>-<name>
 - Agents write code and run tests ONLY — no git commands, no gh commands
 - The manager handles all git operations (commit, push, PR, merge)
 - If blocked, agents write `.manager-blocker.md` in their worktree root
+- **CRITICAL**: After creating a worktree, copy `.claude/settings.local.json` into it:
+  ```bash
+  mkdir -p .worktrees/<id>-<name>/.claude
+  cp .claude/settings.local.json .worktrees/<id>-<name>/.claude/
+  ```
+  Without this, the sub-agent has no permissions and will be auto-denied on all file operations.
+- **CRITICAL**: Before removing a worktree, `cd` back to the repo root first — removing the shell's current directory kills the shell
 
 ### Sub-Agent Permissions
 Sub-agents run in the background and cannot prompt for permissions. **Every target repo** must have its own `.claude/settings.local.json` — permissions from the launching repo (core) do NOT apply to agents working in other repos.
