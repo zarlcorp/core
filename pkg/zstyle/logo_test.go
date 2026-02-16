@@ -37,7 +37,7 @@ func TestLogo(t *testing.T) {
 
 func TestStyledLogo(t *testing.T) {
 	s := zstyle.Title
-	got := zstyle.StyledLogo(&s)
+	got := zstyle.StyledLogo(s)
 	if got == "" {
 		t.Error("StyledLogo returned empty string")
 	}

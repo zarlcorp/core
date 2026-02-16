@@ -12,6 +12,6 @@ const Logo = "" +
 	"╲________╱╲___╱____╱╲____╱___╱╲________╱╲________╱╲________╱╲____╱___╱╲______╱    "
 
 // StyledLogo returns the logo rendered with the given lipgloss style.
-func StyledLogo(s *lipgloss.Style) string {
+func StyledLogo(s lipgloss.Style) string {
 	return s.Render(Logo)
 }
