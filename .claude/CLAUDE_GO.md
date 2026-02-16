@@ -66,6 +66,7 @@ type Asset struct {
 - ❌ Don't: `func GetUser() *User` returning struct with primitives
 - ✅ Do: `func GetUser() User` and let stack handle it
 - ❌ Avoid: Maps/slices of pointers unless NIL semantics needed
+- **Prefer value receivers and value parameters** — keeps data on the stack, avoids heap allocation and GC pressure. Function signatures like `func StyledLogo(s lipgloss.Style)` are better than `func StyledLogo(s *lipgloss.Style)` when the struct is small and mutation isn't needed.
 
 ### Interface Design
 ```go
