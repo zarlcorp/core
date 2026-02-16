@@ -203,6 +203,15 @@ All PM commands are in `.claude/commands/`:
 - `status.md` — monitor progress across repos
 - `discuss.md` — gather requirements before planning
 
+### Releases
+Release is fully automated via GitHub Actions. To release a new version:
+
+1. Push a tag: `git tag v0.X.0 && git push origin v0.X.0`
+2. The `Release` workflow (in each repo) builds cross-platform binaries, creates a GitHub release with assets, and updates the homebrew-tap formula
+3. That's it — do NOT manually create releases with `gh release create` (it conflicts with the workflow)
+
+The shared workflow lives in `zarlcorp/.github/.github/workflows/go-release.yml`. Each repo's `.github/workflows/release.yml` calls it with `binary-name` and `TAP_TOKEN`.
+
 ### Housekeeping
 - After merging work branches, prune them from all repos
 - Commit spec files to core regularly — don't let them pile up as untracked
