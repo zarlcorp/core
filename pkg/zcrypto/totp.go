@@ -13,9 +13,6 @@ import (
 const (
 	// totpPeriod is the time step in seconds (RFC 6238 default).
 	totpPeriod = 30
-
-	// totpDigits is the number of digits in the output code.
-	totpDigits = 6
 )
 
 // TOTPCode generates the current 6-digit TOTP code for the given base32-encoded secret.
