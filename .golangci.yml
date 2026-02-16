@@ -16,6 +16,9 @@ linters:
         - diagnostic
         - style
         - performance
+      settings:
+        hugeParam:
+          sizeThreshold: 1024
     revive:
       rules:
         - name: exported

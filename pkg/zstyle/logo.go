@@ -8,6 +8,6 @@ const Logo = `_  _  _| _ _  _ _
                |  `
 
 // StyledLogo returns the logo rendered with the given lipgloss style.
-func StyledLogo(s lipgloss.Style) string { //nolint:gocritic // value type avoids heap allocation
+func StyledLogo(s lipgloss.Style) string {
 	return s.Render(Logo)
 }
