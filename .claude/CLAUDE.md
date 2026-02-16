@@ -154,8 +154,14 @@ Every dependency has a cost — build time, supply chain risk, upgrade burden. P
 
 ## Agent Workflow
 
+### Organization
+- Org is `zarlcorp` everywhere
+- Repos: core, zburn, zvault, zshield, dot-github, homebrew-tap
+- All repos live under `~/src/zarlcorp/<repo-name>/`
+- No `Co-Authored-By` lines in commits
+
 ### Worktrees for Parallel Agents
-Multiple agents work on this repo simultaneously. Every agent works in its own git worktree — never on the main working tree directly.
+Multiple agents work on this repo simultaneously. Every agent works in its own git worktree — never on the main working tree directly. This applies to ALL repos, not just core.
 
 ```bash
 # create a worktree for a work item
@@ -173,8 +179,34 @@ git worktree remove .worktrees/<id>-<name>
 - The manager handles all git operations (commit, push, PR, merge)
 - If blocked, agents write `.manager-blocker.md` in their worktree root
 
+### Sub-Agent Permissions
+Sub-agents run in the background and cannot prompt for permissions. **Every target repo** must have its own `.claude/settings.local.json` — permissions from the launching repo (core) do NOT apply to agents working in other repos.
+
+Configure each repo's `.claude/settings.local.json` with broad wildcards:
+
+- `Read/Write/Edit(/Users/bruno/src/zarlcorp/**)`
+- `Bash(go test:*)`, `Bash(go build:*)`, `Bash(go mod tidy:*)`, etc.
+- `Bash(git:*)` — covers ALL git subcommands
+- `Bash(gh:*)` — covers ALL GitHub CLI subcommands (pr, issue, release, etc.)
+- `Bash(mkdir:*)`, `Bash(chmod:*)`, `Bash(bash:*)` — shell utilities agents may need
+
+**Never add individual `gh` or `git` subcommand entries** — use the single wildcard. Piecemeal entries cause permission denials when sub-agents try new subcommands.
+
 ### Specs
 Work items are defined in `.manager/specs/<id>-<name>.md`. Specs are the single source of truth for what an agent should build. See existing specs for format.
+
+### PM Commands
+All PM commands are in `.claude/commands/`:
+- `delegate.md` — launch sub-agents for work items (three-stage pipeline: work → gitops → review)
+- `plan.md` — decompose work into specs and issues
+- `review.md` — evaluate sub-agent output against specs
+- `status.md` — monitor progress across repos
+- `discuss.md` — gather requirements before planning
+
+### Housekeeping
+- After merging work branches, prune them from all repos
+- Commit spec files to core regularly — don't let them pile up as untracked
+- Keep all repos on `main` when not actively working
 
 ## Anti-Patterns
 
